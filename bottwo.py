@@ -420,6 +420,7 @@ async def queue(ctx, num: int = 10):
             title = (
                 re.search(r"<title>(.*?)</title>", html).group(1).split(" - YouTube")[0]
             )
+            title = title.encode("ascii", "ignore").decode("ascii")
             duration = re.search(r'"lengthSeconds":"(.*?)"', html).group(1)
             mins = str(int(duration) // 60)
             secs = f"{int(duration) % 60 : 03d}"
@@ -527,6 +528,6 @@ async def pause(ctx):
 
 @bot.command(name="web", help="Shows the web interface link", aliases=["website", "w"])
 async def web(ctx):
-    await ctx.send("http://10.0.1.4:5000/")
+    await ctx.send("http://mc.zigzag1001.pp.ua:7777/")
 
 bot.run(TOKEN)
