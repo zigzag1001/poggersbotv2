@@ -251,4 +251,4 @@ def update_list():
 
 
 if __name__ == "__main__":
-    app.run(host="10.0.1.4")
+    app.run(host="0.0.0.0", port=7777)
