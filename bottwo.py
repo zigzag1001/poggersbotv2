@@ -34,7 +34,7 @@ mycursor = mydb.cursor()
 # playlist
 mycursor.execute(f"DROP TABLE IF EXISTS playlist")
 mycursor.execute(
-    "CREATE TABLE IF NOT EXISTS playlist (id INT, guild BIGINT, url VARCHAR(255), name VARCHAR(255), duration VARCHAR(255))"
+    "CREATE TABLE IF NOT EXISTS playlist (id INT, guild BIGINT, url VARCHAR(255), name VARCHAR(255), duration VARCHAR(255)) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
 )
 
 # bot control
@@ -420,7 +420,7 @@ async def queue(ctx, num: int = 10):
             title = (
                 re.search(r"<title>(.*?)</title>", html).group(1).split(" - YouTube")[0]
             )
-            title = title.encode("ascii", "ignore").decode("ascii")
+            #title = title.encode("ascii", "ignore").decode("ascii")
             duration = re.search(r'"lengthSeconds":"(.*?)"', html).group(1)
             mins = str(int(duration) // 60)
             secs = f"{int(duration) % 60 : 03d}"

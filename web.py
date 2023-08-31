@@ -35,6 +35,7 @@ def get_data():
             response = urllib.request.urlopen(x[1])
             html = response.read().decode("utf-8")
             name = re.search("<title>(.*)</title>", html).group(1).split("- YouTube")[0]
+            #name = name.encode("ascii", "ignore").decode("ascii")
             duration = re.search(r'"lengthSeconds":"(.*?)"', html).group(1)
             mins = str(int(duration) // 60)
             secs = f"{int(duration) % 60 : 03d}"
