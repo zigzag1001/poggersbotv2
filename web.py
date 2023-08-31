@@ -47,9 +47,9 @@ def get_data():
         else:
             name = x[2]
         try:
-            thumbnail = f'https://img.youtube.com/vi/{x[1].split("=")[1]}/hqdefault.jpg'
+            thumbnail = f'https://img.youtube.com/vi/{x[1].split("=")[1]}/mqdefault.jpg'
         except:
-            thumbnail = f'https://img.youtube.com/vi/{x[1].split("/")[3]}/hqdefault.jpg'
+            thumbnail = f'https://img.youtube.com/vi/{x[1].split("/")[3]}/mqdefault.jpg'
         playlist.append(
             {
                 "id": x[0],
