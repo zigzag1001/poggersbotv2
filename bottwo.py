@@ -482,7 +482,7 @@ async def shuffle(ctx, ytpurl=None):
     currenturl = urls.pop(0)
     random.shuffle(ids)
     for i in range(len(ids)):
-        mycursor.execute(f"UPDATE playlist SET id = {ids[i]} WHERE url = '{urls[i]}'")
+        mycursor.execute(f"UPDATE playlist SET id = {ids[i]} WHERE url = '{urls[i]}' AND guild = {ctx.guild.id}")
         mydb.commit()
     await ctx.message.add_reaction("👍")
     await msg.edit(content="Shuffled...\n(Loading titles for queue)")
@@ -532,5 +532,17 @@ async def pause(ctx):
 @bot.command(name="web", help="Shows the web interface link", aliases=["website", "w"])
 async def web(ctx):
     await ctx.send("http://mc.zigzag1001.pp.ua:7777/")
+
+
+@bot.command(name="join", help="Joins the voice channel", aliases=["j"])
+async def join(ctx):
+    if not is_user_connected(ctx):
+        await ctx.send("You are not connected to a voice channel")
+        return
+    await ctx.message.add_reaction("👍")
+    if not is_playing(ctx):
+        await play_audio(ctx)
+    elif not is_connected(ctx):
+        await ctx.author.voice.channel.connect()
 
 bot.run(TOKEN)

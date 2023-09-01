@@ -82,6 +82,10 @@
             </div>
         </div>
         <script>
+            // get guild name from url args
+            const urlParams = new URLSearchParams(window.location.search);
+            const guild = urlParams.get("guild");
+            console.log(guild);
             function fetchData() {
                 fetch("/get_data")
                     .then((response) => response.json())
