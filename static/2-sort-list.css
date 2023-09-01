@@ -199,3 +199,131 @@ body {
 .controls button:active {
     background-color: gray;
 }
+
+#slidingDiv {
+    position: fixed;
+    width: 100%;
+    height: 15%;
+    right: 50%;
+    transform: translateX(50%);
+    top: -163px;
+    transition: top 0.5s ease-in-out, height 0.3s ease-in-out;
+}
+
+#clicktoslideout {
+    position: absolute;
+    right: 50%;
+    transform: translateX(50%);
+    bottom: -50px;
+    padding: 10px;
+    border-radius: 10px;
+    transition: top 0.5s ease-in-out;
+    background-color: #636664;
+}
+
+#clicktoslideout:hover {
+    cursor: pointer;
+}
+
+.searchcontainer {
+    position: absolute;
+    top: 0;
+    right: 50%;
+    transform: translateX(50%);
+    width: 100%;
+    height: 100%;
+}
+
+.addsong {
+    position: absolute;
+    width: 50%;
+    height: 100%;
+    right: 50%;
+    top: 0;
+    transform: translateX(50%);
+    background-color: #636664;
+    border-radius: 10px;
+    padding: 10px;
+}
+.addsong h2 {
+    text-align: center;
+}
+.addsong form {
+    top: -5px;
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-evenly;
+    align-items: center;
+    width: 100%;
+    padding-bottom: 15px;
+}
+.addsong form input {
+    padding: 5px;
+    margin: 5px;
+    border-radius: 5px;
+    border: none;
+}
+
+#addurl {
+    width: 150px;
+}
+
+.addnextcontainer {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+}
+
+.addnextcontainer p {
+    margin-right: 10px;
+}
+
+.addnext {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: none;
+    background-color: lightgray;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+}
+
+.addbutton {
+    border-radius: 5px;
+    border: none;
+    width: 150px;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+}
+.addbutton:hover {
+    cursor: pointer;
+    background-color: lightgray;
+}
+
+#searchresults {
+    position: absolute;
+    width: 100%;
+    height: 0%;
+    top: 25%;
+    opacity: 0;
+    transition: opacity 1s ease-in-out;
+}
+
+#searchresults li {
+    display: flex;
+    flex-direction: row;
+    justify-content: start;
+    align-items: center;
+    padding: 5px;
+    border-radius: 5px;
+    margin: 10px;
+    border: 1px solid black;
+    white-space: nowrap;
+    overflow: hidden;
+    transition: background-color 0.5s ease-in-out;
+}
+
+#searchresults li:hover {
+    cursor: pointer;
+    background-color: lightgray;
+}

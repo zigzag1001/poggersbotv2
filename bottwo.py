@@ -421,7 +421,10 @@ async def queue(ctx, num: int = 10):
                 re.search(r"<title>(.*?)</title>", html).group(1).split(" - YouTube")[0]
             )
             #title = title.encode("ascii", "ignore").decode("ascii")
-            duration = re.search(r'"lengthSeconds":"(.*?)"', html).group(1)
+            if title != '':
+                duration = re.search(r'"lengthSeconds":"(.*?)"', html).group(1)
+            else:
+                duration = 0
             mins = str(int(duration) // 60)
             secs = f"{int(duration) % 60 : 03d}"
             duration_minsec = f"{mins}:{secs.strip()}"

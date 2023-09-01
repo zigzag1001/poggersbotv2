@@ -5,10 +5,51 @@ import re
 import random
 import urllib
 import mysql.connector
+from youtubesearchpython import SearchVideos
 
 load_dotenv()
 
 app = Flask(__name__)
+
+
+def add_to_playlist(url, guild, addnext):
+    mydb = mysql.connector.connect(
+        host=os.getenv("MYSQL_HOST"),
+        user=os.getenv("MYSQL_USER"),
+        password=os.getenv("MYSQL_PASSWORD"),
+        database=os.getenv("MYSQL_DATABASE"),
+    )
+    mycursor = mydb.cursor()
+    mycursor.execute(
+        "SELECT id FROM playlist WHERE guild = %s ORDER BY id DESC LIMIT 1",
+        (guild,),
+    )
+    id = mycursor.fetchone()
+    if id is None:
+        id = 1
+    else:
+        id = id[0] + 1
+    if addnext:
+        mycursor.execute(
+            "SELECT id FROM playlist WHERE guild = %s ORDER BY id LIMIT 1",
+            (guild,),
+        )
+        id = mycursor.fetchone()
+        if id is None:
+            id = 1
+        else:
+            id = id[0] + 1
+        mycursor.execute(
+            "UPDATE playlist SET id = id + 1 WHERE id >= %s AND guild = %s",
+            (id, guild),
+        )
+        mydb.commit()
+
+    mycursor.execute(
+        "INSERT INTO playlist (id, guild, url) VALUES (%s, %s, %s)",
+        (id, guild, url),
+    )
+    mydb.commit()
 
 
 @app.route("/")
@@ -36,7 +77,10 @@ def get_data():
             html = response.read().decode("utf-8")
             name = re.search("<title>(.*)</title>", html).group(1).split("- YouTube")[0]
             #name = name.encode("ascii", "ignore").decode("ascii")
-            duration = re.search(r'"lengthSeconds":"(.*?)"', html).group(1)
+            if name != '':
+                duration = re.search(r'"lengthSeconds":"(.*?)"', html).group(1)
+            else:
+                duration = 0
             mins = str(int(duration) // 60)
             secs = f"{int(duration) % 60 : 03d}"
             duration_minsec = f"{mins}:{secs.strip()}"
@@ -250,6 +294,52 @@ def update_list():
 
     return jsonify({"success": True})
 
+@app.route("/add_song", methods=["POST"])
+def add_song():
+    data = request.get_json()
+    search = data.get("addurl")
+    guild = int(data.get("guild"))
+    addnext = data.get("addnext")
+    results = None
+    is_playlist = False
+    is_url = False
+
+    mydb = mysql.connector.connect(
+        host=os.getenv("MYSQL_HOST"),
+        user=os.getenv("MYSQL_USER"),
+        password=os.getenv("MYSQL_PASSWORD"),
+        database=os.getenv("MYSQL_DATABASE"),
+    )
+    cursor = mydb.cursor()
+    # Check if search is a url using regex
+    protocol = r"(https:\/\/www\.|http:\/\/www\.|https:\/\/|http:\/\/)?"
+    domain = r"[a-zA-Z]{2,}(\.[a-zA-Z]{2,})(\.[a-zA-Z]{2,})?"
+    path = r"\/[a-zA-Z0-9]{2,}"
+    subdomain = r"((https:\/\/www\.|http:\/\/www\.|https:\/\/|http:\/\/)?[a-zA-Z]{2,}(\.[a-zA-Z]{2,})(\.[a-zA-Z]{2,})?)"
+    ip_domain = r"(https:\/\/www\.|http:\/\/www\.|https:\/\/|http:\/\/)?[a-zA-Z0-9]{2,}\.[a-zA-Z0-9]{2,}\.[a-zA-Z0-9]{2,}(\.[a-zA-Z0-9]{2,})?"
+
+    final_regex = re.compile(f"{protocol}({domain}{path}|{subdomain}|{ip_domain})")
+    if re.match(final_regex, search):
+        if "playlist?list=" in search:
+            is_playlist = True
+            ytplaylist = (
+                str(os.popen(f"yt-dlp {search} --flat-playlist --get-url").read())
+                .strip()
+                .split("\n")
+            )
+            for x in ytplaylist:
+                add_to_playlist(x, guild, addnext)
+        else:
+            is_url = True
+            add_to_playlist(search, guild, addnext)
+    else:
+        search = SearchVideos(search, offset=1, mode="json", max_results=5)
+        info = search.result()
+        info = eval(info)
+        results = []
+        for x in range(5):
+            results.append({'url': info["search_result"][x]["link"], 'title': info["search_result"][x]["title"], 'duration': info["search_result"][x]["duration"]})
+    return jsonify({"success": True, "results": results, "is_playlist": is_playlist, "is_url": is_url})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=7777)
