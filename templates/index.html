@@ -30,6 +30,7 @@
                 <button class="loop" id="loop">Loop</button>
             </div>
         </div>
+        <div class="plcontainer">
         <ul id="sortlist">
             {% for song in playlist %}
             <li>
@@ -45,6 +46,10 @@
             {% endfor %}
             <!-- Display data here -->
         </ul>
+        <div class="extrainfo" id="extrainfo">
+            <p class="pllength" id="pllength"></p>
+        </div>        
+        </div>
         <div
             class="clickblocker"
             id="clickblocker"
@@ -85,15 +90,16 @@
             // get guild name from url args
             const urlParams = new URLSearchParams(window.location.search);
             const guild = urlParams.get("guild");
-            console.log(guild);
             function fetchData() {
-                fetch("/get_data")
+                fetch("/get_data?guild=" + guild)
                     .then((response) => response.json())
                     .then((data) => {
+                        const playlist = data.playlist;
+                        const pllength = data.pllength;
                         const sortlist = document.getElementById("sortlist");
                         sortlist.innerHTML = ""; // Clear the existing list
 
-                        data.forEach((song, index) => {
+                        playlist.forEach((song, index) => {
                             const li = document.createElement("li");
                             const img = document.createElement("img");
                             const div1 = document.createElement("div");
@@ -109,7 +115,7 @@
                             img.src = song.thumbnail;
                             li.dataset.id = song.id;
                             li.dataset.url = song.url;
-                            li.dataset.guild = song.guild;
+                            li.dataset.guild = guild;
                             li.dataset.name = song.name;
                             li.className = "songli";
                             div1.innerText = song.name;
@@ -151,7 +157,6 @@
                                 li.style = "background-color: #5B5B66;";
                                 var firstname = song.name;
                                 var firstthumb = song.thumbnail;
-                                var firstguild = song.guild;
                                 firstthumb = firstthumb.replace(
                                     "mqdefault",
                                     "maxresdefault",
@@ -160,8 +165,6 @@
                                     firstname;
                                 document.getElementById("firstthumb").src =
                                     firstthumb;
-                                document.getElementById("first").title =
-                                    firstguild;
                             }
                             button1.addEventListener("click", async () => {
                                 const response = await fetch("/play_song", {
@@ -172,7 +175,7 @@
                                     body: JSON.stringify({
                                         id: song.id,
                                         url: song.url,
-                                        guild: song.guild,
+                                        guild: guild,
                                     }),
                                 });
                                 const data = await response.json();
@@ -188,7 +191,7 @@
                                     body: JSON.stringify({
                                         id: song.id,
                                         url: song.url,
-                                        guild: song.guild,
+                                        guild: guild,
                                     }),
                                 });
                                 const data = await response.json();
@@ -209,7 +212,11 @@
                                 fetchData();
                             });
                         });
-
+                        const pllengthdiv = document.getElementById(
+                            "pllength",
+                        );
+                        pllengthdiv.dataset.pllength = pllength;
+                        pllengthdiv.innerText = pllength + " songs in queue";
                         slist(sortlist);
                     });
             }
@@ -228,7 +235,7 @@
                             "Content-Type": "application/json",
                         },
                         body: JSON.stringify({
-                            guild: document.getElementById("first").title,
+                            guild: guild,
                         }),
                     });
 
@@ -251,7 +258,7 @@
                             "Content-Type": "application/json",
                         },
                         body: JSON.stringify({
-                            guild: document.getElementById("first").title,
+                            guild: guild,
                         }),
                     });
 
@@ -283,7 +290,7 @@
                             "Content-Type": "application/json",
                         },
                         body: JSON.stringify({
-                            guild: document.getElementById("first").title,
+                            guild: guild
                         }),
                     });
                     
@@ -306,7 +313,7 @@
                             "Content-Type": "application/json",
                         },
                         body: JSON.stringify({
-                            guild: document.getElementById("first").title,
+                            guild: guild,
                         }),
                     });
 
@@ -331,7 +338,6 @@
                     const id = li.dataset.id;
                     const name = li.dataset.name;
                     const url = li.dataset.url;
-                    const guild = li.dataset.guild;
                     updatedList.push({
                         id,
                         name,
@@ -385,7 +391,7 @@
                         body: JSON.stringify({
                             addurl: form.addurl.value,
                             addnext: form.addnext.checked,
-                            guild: document.getElementById("first").title,
+                            guild: guild,
                         }),
                     });
                     const data = await response.json();
@@ -420,6 +426,7 @@
                             img.style = "margin-right: 10px;";
                             li.appendChild(img);
                             name.innerHTML = searchname;
+                            name.style = "white-space: nowrap; overflow: hidden; width: 500%; text-overflow: ellipsis;";
                             li.appendChild(name);
                             duration.innerHTML = searchduration;
                             duration.style =
@@ -447,9 +454,7 @@
                                         body: JSON.stringify({
                                             addurl: searchurl,
                                             addnext: form.addnext.checked,
-                                            guild: document.getElementById(
-                                                "first",
-                                            ).title,
+                                            guild: guild,
                                         }),
                                     });
                                     const data = await response.json();

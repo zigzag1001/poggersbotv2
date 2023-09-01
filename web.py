@@ -57,8 +57,9 @@ def display_data():
     return render_template("index.html")
 
 
-@app.route("/get_data")
+@app.route("/get_data", methods=["GET"])
 def get_data():
+    guild = request.args.get("guild")
     mydb = mysql.connector.connect(
         host=os.getenv("MYSQL_HOST"),
         user=os.getenv("MYSQL_USER"),
@@ -67,11 +68,12 @@ def get_data():
     )
     cursor = mydb.cursor()
     cursor.execute(
-        f"SELECT id, url, name, guild, duration FROM playlist ORDER BY id LIMIT 10"
+        f"SELECT id, url, name, guild, duration FROM playlist WHERE guild = {guild} ORDER BY id"
     )
     result = cursor.fetchall()
+    pllength = len(result)
     playlist = []
-    for x in result:
+    for x in result[:10]:
         if x[2] == None or x[4] == None:
             response = urllib.request.urlopen(x[1])
             html = response.read().decode("utf-8")
@@ -105,8 +107,12 @@ def get_data():
                 "duration": x[4],
             }
         )
+    response = {
+        "playlist": playlist,
+        "pllength": pllength,
+    }
     # print(playlist)
-    response = make_response(jsonify(playlist))
+    response = make_response(jsonify(response))
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = 0

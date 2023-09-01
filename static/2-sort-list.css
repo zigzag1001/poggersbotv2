@@ -95,11 +95,29 @@ li {
     border-radius: 10px;
 }
 
-ul {
+.plcontainer {
     width: 40%;
     top: 14%;
     right: 0px;
     position: absolute;
+}
+
+.extrainfo {
+    margin: 10px;
+    padding: 15px;
+    border: 1px solid #415246;
+    background: #636664;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: row;
+    justify-content: start;
+    align-items: center;
+    border-radius: 10px;
+}
+
+.pllength {
+    width: 100%;
+    text-align: center;
 }
 
 .songtitle {
@@ -302,7 +320,7 @@ body {
 
 #searchresults {
     position: absolute;
-    width: 100%;
+    width: 90%;
     height: 0%;
     top: 25%;
     opacity: 0;
