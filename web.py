@@ -234,7 +234,7 @@ def shuffle():
     currenturl = urls.pop(0)
     random.shuffle(ids)
     for i in range(len(ids)):
-        cursor.execute(f"UPDATE playlist SET id = {ids[i]} WHERE url = '{urls[i]}'")
+        cursor.execute(f"UPDATE playlist SET id = {ids[i]} WHERE url = '{urls[i]}' AND guild = {guild}")
         mydb.commit()
     return jsonify({"success": True})
 

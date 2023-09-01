@@ -132,6 +132,7 @@ async def play_audio(ctx, ytplaylist=[]):
 
     while playlist != []:
         if not is_connected(ctx):
+            await web(ctx, "Web interface: ")
             await ctx.author.voice.channel.connect()
         voice_client = ctx.message.guild.voice_client
 
@@ -530,8 +531,8 @@ async def pause(ctx):
 
 
 @bot.command(name="web", help="Shows the web interface link", aliases=["website", "w"])
-async def web(ctx):
-    await ctx.send("http://mc.zigzag1001.pp.ua:7777/?guild=" + str(ctx.guild.id))
+async def web(ctx, msg=''):
+    await ctx.send(msg + "http://mc.zigzag1001.pp.ua:7777/?guild=" + str(ctx.guild.id))
 
 
 @bot.command(name="join", help="Joins the voice channel", aliases=["j"])
