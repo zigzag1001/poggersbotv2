@@ -238,6 +238,14 @@ async def on_message(message):
     if message.content.startswith("r;"):
         await bot.process_commands(message)
 
+@bot.event
+async def on_voice_state_update(member, before, after):
+    bot_voice_channel = member.guild.voice_client
+    if bot_voice_channel is None:
+        return
+    if bot_voice_channel.channel.members == [bot.user]:
+        await stop(None, member.guild)
+
 
 # Commands
 @bot.command(
@@ -366,15 +374,17 @@ async def play(ctx, *, search: str):
 
 
 @bot.command(name="stop", help="Stops playing audio, clear queue and disconnects bot")
-async def stop(ctx):
-    if not is_user_connected(ctx):
-        await ctx.send("You are not connected to a voice channel")
-        return
-    if not is_connected(ctx):
-        await ctx.send("I am not connected to a voice channel")
-        return
-    mycursor.execute("DELETE FROM playlist WHERE guild = %s", (ctx.guild.id,))
-    voice_client = ctx.message.guild.voice_client
+async def stop(ctx, guild=None):
+    if ctx != None:
+        if not is_user_connected(ctx):
+            await ctx.send("You are not connected to a voice channel")
+            return
+        if not is_connected(ctx):
+            await ctx.send("I am not connected to a voice channel")
+            return
+        guild = ctx.guild
+    mycursor.execute("DELETE FROM playlist WHERE guild = %s", (guild.id,))
+    voice_client = guild.voice_client
     await voice_client.disconnect()
 
 
