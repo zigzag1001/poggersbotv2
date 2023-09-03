@@ -65,6 +65,9 @@ mycursor.execute(
     "CREATE TABLE IF NOT EXISTS bot_control (guild BIGINT, action VARCHAR(255), voice_channel BIGINT)"
 )
 
+# yt data
+mycursor.execute(f"CREATE TABLE IF NOT EXISTS yt_data (url VARCHAR(255) UNIQUE, name VARCHAR(255), duration VARCHAR(255)) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+
 ytdl = yt_dlp.YoutubeDL(ytdlp_format_options)
 
 
@@ -123,6 +126,50 @@ def add_to_playlist(ctx, url):
         (id, ctx.guild.id, url),
     )
     mydb.commit()
+
+def get_yt_data(urls_list):
+    if len(urls_list) == 0:
+        return {}
+    mycursor.execute(
+        "SELECT url, name, duration FROM yt_data WHERE url IN (%s)"
+        % (",".join(["%s"] * len(urls_list))),
+        urls_list,
+    )
+    result = mycursor.fetchall()
+    resultsdict = {}
+    if result is not None:
+        for x in result:
+            resultsdict[x[0]] = (x[1], x[2])
+
+    urls_list_data = {}
+
+    for url in urls_list:
+        if url in resultsdict:
+            urls_list_data[url] = resultsdict[url]
+        else:
+            print("Got from yt")
+            response = urllib.request.urlopen(url)
+            html = response.read().decode()
+            name = re.search(r"<title>(.*?)</title>", html).group(1).split(" - YouTube")[0]
+            duration = re.search(r'"lengthSeconds":"(.*?)"', html)
+            if duration is None:
+                duration = 0
+            else:
+                duration = duration.group(1)
+            mins = str(int(duration) // 60)
+            secs = f"{int(duration) % 60 : 03d}"
+            duration_minsec = f"{mins}:{secs.strip()}"
+            try:
+                mycursor.execute(
+                    "INSERT INTO yt_data (url, name, duration) VALUES (%s, %s, %s)",
+                    (url, name, duration_minsec),
+                )
+                mydb.commit()
+            except mysql.connector.errors.IntegrityError:
+                pass
+            urls_list_data[url] = (name, duration_minsec)
+    return urls_list_data
+
 
 async def keep_db_connection():
     while True:
@@ -298,9 +345,7 @@ async def play(ctx, *, search: str):
         else:
             yturl = search
         await msg.edit(content="Added to queue...\n(Getting title)")
-        response = urllib.request.urlopen(yturl)
-        html = response.read().decode()
-        name = re.search(r"<title>(.*?)</title>", html).group(1).split(" - YouTube")[0]
+        name = get_yt_data(yturl)[0]
     else:
         await ctx.message.add_reaction("🔎")
         search = SearchVideos(search, offset=1, mode="json", max_results=5)
@@ -415,47 +460,31 @@ async def queue(ctx, num: int = 10):
     if not is_user_connected(ctx):
         await ctx.send("You are not connected to a voice channel")
         return
+    time1 = time.time()  # For debugging
     await ctx.message.add_reaction("👍")
-    playlistnames = []
+    playlist = []
     mycursor.execute(
-        "SELECT url, name, duration FROM playlist WHERE guild = %s ORDER BY id",
+        "SELECT url FROM playlist WHERE guild = %s ORDER BY id",
         (ctx.guild.id,),
     )
     for x in mycursor:
-        playlistnames.append([x[0], x[1], x[2]])
-    if playlistnames == []:
+        playlist.append(x[0])
+    if playlist == []:
         await ctx.send("The queue is empty")
         return
     extra = ""
-    if len(playlistnames) > num:
+    if len(playlist) > num:
         todisplay = num
-        extra = f" and {len(playlistnames) - num} more, {len(playlistnames)} in total"
+        extra = f" and {len(playlist) - num} more, {len(playlist)} in total"
     else:
-        todisplay = len(playlistnames)
+        todisplay = len(playlist)
     msgtext = ""
+    yt_data = get_yt_data(playlist[:todisplay])
     for x in range(todisplay):
-        if playlistnames[x][1] == None or playlistnames[x][2] == None:
-            response = urllib.request.urlopen(playlistnames[x][0])
-            html = response.read().decode()
-            title = (
-                re.search(r"<title>(.*?)</title>", html).group(1).split(" - YouTube")[0]
-            )
-            #title = title.encode("ascii", "ignore").decode("ascii")
-            if title != '':
-                duration = re.search(r'"lengthSeconds":"(.*?)"', html).group(1)
-            else:
-                duration = 0
-            mins = str(int(duration) // 60)
-            secs = f"{int(duration) % 60 : 03d}"
-            duration_minsec = f"{mins}:{secs.strip()}"
-            msgtext += f"{x+1}. {title} -- {duration_minsec}\n"
-            mycursor.execute(
-                "UPDATE playlist SET name = %s, duration = %s WHERE url = %s",
-                (title, duration_minsec, playlistnames[x][0]),
-            )
-            mydb.commit()
-        else:
-            msgtext += f"{x+1}. {playlistnames[x][1]} -- {playlistnames[x][2]}\n"
+        title = yt_data[playlist[x]][0]
+        duration_minsec = yt_data[playlist[x]][1]
+        msgtext += f"{x+1}. {title} -- {duration_minsec}\n"
+    print(f"Queue time taken: {time.time() - time1}")  # For debugging
     await ctx.send(msgtext + extra)
 
 

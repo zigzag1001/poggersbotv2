@@ -52,6 +52,59 @@ def add_to_playlist(url, guild, addnext):
     mydb.commit()
 
 
+def get_yt_data(urls_list):
+    if len(urls_list) == 0:
+        return {}
+    mydb = mysql.connector.connect(
+        host=os.getenv("MYSQL_HOST"),
+        user=os.getenv("MYSQL_USER"),
+        password=os.getenv("MYSQL_PASSWORD"),
+        database=os.getenv("MYSQL_DATABASE"),
+        autocommit=True,
+    )
+    mycursor = mydb.cursor()
+    # makes one query for all urls
+    mycursor.execute(
+        "SELECT url, name, duration FROM yt_data WHERE url IN (%s)"
+        % (",".join(["%s"] * len(urls_list))),
+        urls_list,
+    )
+    result = mycursor.fetchall()
+    resultsdict = {}
+    if result is not None:
+        for x in result:
+            resultsdict[x[0]] = (x[1], x[2])
+
+    urls_list_data = {}
+
+    for url in urls_list:
+        if url in resultsdict:
+            urls_list_data[url] = resultsdict[url]
+        else:
+            print("Got from yt")
+            response = urllib.request.urlopen(url)
+            html = response.read().decode()
+            name = re.search(r"<title>(.*?)</title>", html).group(1).split(" - YouTube")[0]
+            duration = re.search(r'"lengthSeconds":"(.*?)"', html)
+            if duration is None:
+                duration = 0
+            else:
+                duration = duration.group(1)
+            mins = str(int(duration) // 60)
+            secs = f"{int(duration) % 60 : 03d}"
+            duration_minsec = f"{mins}:{secs.strip()}"
+            try:
+                mycursor.execute(
+                    "INSERT INTO yt_data (url, name, duration) VALUES (%s, %s, %s)",
+                    (url, name, duration_minsec),
+                )
+                mydb.commit()
+            except mysql.connector.errors.IntegrityError:
+                pass
+            urls_list_data[url] = (name, duration_minsec)
+    return urls_list_data
+
+
 @app.route("/")
 def display_data():
     return render_template("index.html")
@@ -68,31 +121,16 @@ def get_data():
     )
     cursor = mydb.cursor()
     cursor.execute(
-        f"SELECT id, url, name, guild, duration FROM playlist WHERE guild = {guild} ORDER BY id"
+        f"SELECT id, url, guild FROM playlist WHERE guild = {guild} ORDER BY id"
     )
     result = cursor.fetchall()
     pllength = len(result)
     playlist = []
-    for x in result[:10]:
-        if x[2] == None or x[4] == None:
-            response = urllib.request.urlopen(x[1])
-            html = response.read().decode("utf-8")
-            name = re.search("<title>(.*)</title>", html).group(1).split("- YouTube")[0]
-            #name = name.encode("ascii", "ignore").decode("ascii")
-            if name != '':
-                duration = re.search(r'"lengthSeconds":"(.*?)"', html).group(1)
-            else:
-                duration = 0
-            mins = str(int(duration) // 60)
-            secs = f"{int(duration) % 60 : 03d}"
-            duration_minsec = f"{mins}:{secs.strip()}"
-            cursor.execute(
-                "UPDATE playlist SET name = %s, duration = %s WHERE url = %s",
-                (name, duration_minsec, x[1]),
-            )
-            mydb.commit()
-        else:
-            name = x[2]
+    toshow = 10
+    playlist_ytdata = get_yt_data([x[1] for x in result[:toshow]])
+    for x in result[:toshow]:
+        name = playlist_ytdata[x[1]][0]
+        duration = playlist_ytdata[x[1]][1]
         try:
             thumbnail = f'https://img.youtube.com/vi/{x[1].split("=")[1]}/mqdefault.jpg'
         except:
@@ -103,8 +141,8 @@ def get_data():
                 "url": x[1],
                 "name": name,
                 "thumbnail": thumbnail,
-                "guild": str(x[3]),
-                "duration": x[4],
+                "guild": str(x[2]),
+                "duration": duration,
             }
         )
     response = {
