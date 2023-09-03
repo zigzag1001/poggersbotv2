@@ -56,7 +56,7 @@ mycursor = mydb.cursor()
 # playlist
 mycursor.execute(f"DROP TABLE IF EXISTS playlist")
 mycursor.execute(
-    "CREATE TABLE IF NOT EXISTS playlist (id INT, guild BIGINT, url VARCHAR(255), name VARCHAR(255), duration VARCHAR(255)) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+    "CREATE TABLE IF NOT EXISTS playlist (id INT, guild BIGINT, url VARCHAR(255)) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
 )
 
 # bot control
@@ -345,7 +345,7 @@ async def play(ctx, *, search: str):
         else:
             yturl = search
         await msg.edit(content="Added to queue...\n(Getting title)")
-        name = get_yt_data(yturl)[0]
+        name = get_yt_data([yturl])[yturl][0]
     else:
         await ctx.message.add_reaction("🔎")
         search = SearchVideos(search, offset=1, mode="json", max_results=5)
@@ -380,8 +380,6 @@ async def play(ctx, *, search: str):
         name = info["search_result"][resultnum]["title"]
 
         await ctx.send(f"Added {name} to queue")
-    # sanitize name UnicodeEncodeError: 'utf-8' codec can't encode characters in position 19-20: surrogates not allowed
-    name = name.encode("ascii", "ignore").decode("ascii")
     mycursor.execute(
         "SELECT id, url FROM playlist WHERE guild = %s ORDER BY id", (ctx.guild.id,)
     )
@@ -404,8 +402,8 @@ async def play(ctx, *, search: str):
                     (secondid, ctx.guild.id),
                 )
                 mycursor.execute(
-                    "INSERT INTO playlist (id, url, name, guild) VALUES (%s, %s, %s, %s)",
-                    (secondid, yturl, name, ctx.guild.id),
+                    "INSERT INTO playlist (id, url, guild) VALUES (%s, %s, %s)",
+                    (secondid, yturl, ctx.guild.id),
                 )
                 mydb.commit()
                 await qmsg.delete()
@@ -417,11 +415,6 @@ async def play(ctx, *, search: str):
     await msg.edit(content="Done")
     if addnext == False:
         add_to_playlist(ctx, yturl)
-        mycursor.execute(
-            "UPDATE playlist SET name = %s WHERE url = %s AND guild = %s",
-            (name, yturl, ctx.guild.id),
-        )
-        mydb.commit()
     await ctx.message.add_reaction("👍")
     if not is_playing(ctx):
         await play_audio(ctx, ytplaylist)
@@ -485,7 +478,19 @@ async def queue(ctx, num: int = 10):
         duration_minsec = yt_data[playlist[x]][1]
         msgtext += f"{x+1}. {title} -- {duration_minsec}\n"
     print(f"Queue time taken: {time.time() - time1}")  # For debugging
-    await ctx.send(msgtext + extra)
+    fullmsg = msgtext + extra
+    if len(fullmsg) >= 2000:
+        partmsg = ''
+        for x in range(todisplay):
+            title = yt_data[playlist[x]][0]
+            duration_minsec = yt_data[playlist[x]][1]
+            partmsg += f"{x+1}. {title} -- {duration_minsec}\n"
+            if len(partmsg) >= 1900:
+                await ctx.send(partmsg)
+                partmsg = ''
+        await ctx.send(partmsg + extra)
+    else:
+        await ctx.send(fullmsg)
 
 
 @bot.command(name="shuffle", help="Shuffles the queue", aliases=["sh"])
