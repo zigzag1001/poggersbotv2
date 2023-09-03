@@ -156,8 +156,12 @@ def get_yt_data(urls_list):
                 duration = 0
             else:
                 duration = duration.group(1)
-            mins = str(int(duration) // 60)
-            secs = f"{int(duration) % 60 : 03d}"
+            if int(duration) >= 3600:
+                mins = str(int(duration) // 3600) + ":" + str(int(duration) % 3600 // 60)
+                secs = f"{int(duration) % 3600 % 60 : 03d}"
+            else:
+                mins = str(int(duration) // 60)
+                secs = f"{int(duration) % 60 : 03d}"
             duration_minsec = f"{mins}:{secs.strip()}"
             try:
                 mycursor.execute(
@@ -190,6 +194,7 @@ async def play_audio(ctx, ytplaylist=[]):
             await web(ctx, "Web interface: ")
             await ctx.author.voice.channel.connect()
         voice_client = ctx.message.guild.voice_client
+        voice_channel = ctx.message.guild.voice_client.channel
 
         url = playlist.pop(0)
 
@@ -206,6 +211,10 @@ async def play_audio(ctx, ytplaylist=[]):
             voice_client.play(source)
             print(f"Playing {url}")
             while voice_client.is_playing():
+                # allow bot to be dragged to another voice channel and continue playing
+                if voice_channel != ctx.message.guild.voice_client.channel:
+                    print("Bot moved")
+                    voice_client.pause()
                 mydb2 = mysql.connector.connect(
                     host=os.getenv("MYSQL_HOST"),
                     user=os.getenv("MYSQL_USER"),
@@ -301,6 +310,12 @@ async def on_voice_state_update(member, before, after):
         return
     if bot_voice_channel.channel.members == [bot.user]:
         await stop(None, member.guild)
+        return
+    # if bot is disconnected from voice channel
+    if member == bot.user and not member in bot_voice_channel.channel.members:
+        print("Bot disconnected")
+        await stop(None, member.guild)
+        return
 
 
 # Commands
@@ -309,10 +324,15 @@ async def on_voice_state_update(member, before, after):
     help="Adds a song to queue, url or search term",
     aliases=["p", "search"],
 )
-async def play(ctx, *, search: str):
+async def play(ctx, *, search: str = None):
     ytplaylist = []
     if not is_user_connected(ctx):
         await ctx.send("You are not connected to a voice channel")
+        return
+    if search is None:
+        await skip(ctx)
+        if not is_playing(ctx):
+            await play_audio(ctx)
         return
 
     # Check if search is a url using regex
@@ -340,12 +360,13 @@ async def play(ctx, *, search: str):
                 content=f"Added {len(ytplaylist)} songs to queue...\n(Adding to playlist database)"
             )
             yturl = ytplaylist.pop(0)
+            name = 'playlist'
             for x in ytplaylist:
                 add_to_playlist(ctx, x)
         else:
             yturl = search
-        await msg.edit(content="Added to queue...\n(Getting title)")
-        name = get_yt_data([yturl])[yturl][0]
+            name = get_yt_data([yturl])[yturl][0]
+        await msg.edit(content="Added to queue...")
     else:
         await ctx.message.add_reaction("🔎")
         search = SearchVideos(search, offset=1, mode="json", max_results=5)
@@ -371,6 +392,7 @@ async def play(ctx, *, search: str):
                 break
             await asyncio.sleep(1)
         if resultnum == -1:
+            await smsg.delete()
             resultnum = 0
         if resultnum == 5:
             await msg.edit(content="Cancelled")
@@ -379,7 +401,7 @@ async def play(ctx, *, search: str):
         yturl = info["search_result"][resultnum]["link"]
         name = info["search_result"][resultnum]["title"]
 
-        await ctx.send(f"Added {name} to queue")
+    await msg.edit(content = f"Added {name} to queue")
     mycursor.execute(
         "SELECT id, url FROM playlist WHERE guild = %s ORDER BY id", (ctx.guild.id,)
     )
@@ -406,13 +428,11 @@ async def play(ctx, *, search: str):
                     (secondid, yturl, ctx.guild.id),
                 )
                 mydb.commit()
-                await qmsg.delete()
                 break
             elif reacts[1].count > 1:
-                await qmsg.delete()
                 break
             await asyncio.sleep(1)
-    await msg.edit(content="Done")
+        await qmsg.delete()
     if addnext == False:
         add_to_playlist(ctx, yturl)
     await ctx.message.add_reaction("👍")
@@ -468,10 +488,10 @@ async def queue(ctx, num: int = 10):
     extra = ""
     if len(playlist) > num:
         todisplay = num
-        extra = f" and {len(playlist) - num} more, {len(playlist)} in total"
+        extra = f"\n {' '*10} + {len(playlist) - num} more, {len(playlist)} total"
     else:
         todisplay = len(playlist)
-    msgtext = ""
+    msgtext = "```markdown\n"
     yt_data = get_yt_data(playlist[:todisplay])
     for x in range(todisplay):
         title = yt_data[playlist[x]][0]
@@ -480,17 +500,17 @@ async def queue(ctx, num: int = 10):
     print(f"Queue time taken: {time.time() - time1}")  # For debugging
     fullmsg = msgtext + extra
     if len(fullmsg) >= 2000:
-        partmsg = ''
+        partmsg = '```markdown\n'
         for x in range(todisplay):
             title = yt_data[playlist[x]][0]
             duration_minsec = yt_data[playlist[x]][1]
             partmsg += f"{x+1}. {title} -- {duration_minsec}\n"
             if len(partmsg) >= 1900:
-                await ctx.send(partmsg)
+                await ctx.send(partmsg + '```')
                 partmsg = ''
-        await ctx.send(partmsg + extra)
+        await ctx.send(partmsg + extra + '```')
     else:
-        await ctx.send(fullmsg)
+        await ctx.send(fullmsg + "```")
 
 
 @bot.command(name="shuffle", help="Shuffles the queue", aliases=["sh"])
@@ -541,7 +561,7 @@ async def shuffle(ctx, ytpurl=None):
     await ctx.message.add_reaction("👍")
     await msg.edit(content="Shuffled...\n(Loading titles for queue)")
     await queue(ctx)
-    await msg.edit(content="Done")
+    await msg.delete()
     if not is_playing(ctx) and ytpurl != None:
         await play_audio(ctx)
 
@@ -594,9 +614,10 @@ async def join(ctx):
         await ctx.send("You are not connected to a voice channel")
         return
     await ctx.message.add_reaction("👍")
+    if not is_connected(ctx):
+        await ctx.author.voice.channel.connect()
     if not is_playing(ctx):
         await play_audio(ctx)
-    elif not is_connected(ctx):
-        await ctx.author.voice.channel.connect()
+
 
 bot.run(TOKEN)

@@ -90,8 +90,12 @@ def get_yt_data(urls_list):
                 duration = 0
             else:
                 duration = duration.group(1)
-            mins = str(int(duration) // 60)
-            secs = f"{int(duration) % 60 : 03d}"
+            if int(duration) >= 3600:
+                mins = str(int(duration) // 3600) + ":" + str(int(duration) % 3600 // 60)
+                secs = f"{int(duration) % 3600 % 60 : 03d}"
+            else:
+                mins = str(int(duration) // 60)
+                secs = f"{int(duration) % 60 : 03d}"
             duration_minsec = f"{mins}:{secs.strip()}"
             try:
                 mycursor.execute(
