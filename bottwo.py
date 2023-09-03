@@ -23,25 +23,6 @@ print(f'Is opus loaded: {discord.opus.is_loaded()}')
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix=["r; ", "r;"], intents=intents)
 
-mydb = mysql.connector.connect(
-    host=os.getenv("MYSQL_HOST"),
-    user=os.getenv("MYSQL_USER"),
-    password=os.getenv("MYSQL_PASSWORD"),
-    database=os.getenv("MYSQL_DATABASE"),
-)
-mycursor = mydb.cursor()
-
-# playlist
-mycursor.execute(f"DROP TABLE IF EXISTS playlist")
-mycursor.execute(
-    "CREATE TABLE IF NOT EXISTS playlist (id INT, guild BIGINT, url VARCHAR(255), name VARCHAR(255), duration VARCHAR(255)) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
-)
-
-# bot control
-mycursor.execute(f"DROP TABLE IF EXISTS bot_control")
-mycursor.execute(
-    "CREATE TABLE IF NOT EXISTS bot_control (guild BIGINT, action VARCHAR(255), voice_channel BIGINT)"
-)
 
 ytdlp_format_options = {
     "format": "bestaudio/best",
@@ -61,6 +42,28 @@ ffmpeg_opts = {
     "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
     "options": "-vn",
 }
+
+db_config = {
+    "user": os.getenv("MYSQL_USER"),
+    "password": os.getenv("MYSQL_PASSWORD"),
+    "host": os.getenv("MYSQL_HOST"),
+    "database": os.getenv("MYSQL_DATABASE"),
+}
+
+
+mydb = mysql.connector.connect(**db_config)
+mycursor = mydb.cursor()
+# playlist
+mycursor.execute(f"DROP TABLE IF EXISTS playlist")
+mycursor.execute(
+    "CREATE TABLE IF NOT EXISTS playlist (id INT, guild BIGINT, url VARCHAR(255), name VARCHAR(255), duration VARCHAR(255)) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+)
+
+# bot control
+mycursor.execute(f"DROP TABLE IF EXISTS bot_control")
+mycursor.execute(
+    "CREATE TABLE IF NOT EXISTS bot_control (guild BIGINT, action VARCHAR(255), voice_channel BIGINT)"
+)
 
 ytdl = yt_dlp.YoutubeDL(ytdlp_format_options)
 
@@ -121,6 +124,11 @@ def add_to_playlist(ctx, url):
     )
     mydb.commit()
 
+async def keep_db_connection():
+    while True:
+        mycursor.execute("SELECT 1")
+        mycursor.fetchone()
+        await asyncio.sleep(60)
 
 async def play_audio(ctx, ytplaylist=[]):
     playlist = []
@@ -228,6 +236,7 @@ async def play_audio(ctx, ytplaylist=[]):
 async def on_ready():
     print(f"{bot.user.name} has connected to Discord!")
     await bot.change_presence(activity=discord.Game(name="r;help"))
+    await keep_db_connection()
 
 
 @bot.event
