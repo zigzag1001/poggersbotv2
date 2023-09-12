@@ -81,7 +81,6 @@ def get_yt_data(urls_list):
         if url in resultsdict:
             urls_list_data[url] = resultsdict[url]
         else:
-            print("Got from yt")
             response = urllib.request.urlopen(url)
             html = response.read().decode()
             name = re.search(r"<title>(.*?)</title>", html).group(1).split(" - YouTube")[0]
@@ -137,7 +136,7 @@ def get_data():
         duration = playlist_ytdata[x[1]][1]
         try:
             thumbnail = f'https://img.youtube.com/vi/{x[1].split("=")[1]}/mqdefault.jpg'
-        except:
+        except IndexError:
             thumbnail = f'https://img.youtube.com/vi/{x[1].split("/")[3]}/mqdefault.jpg'
         playlist.append(
             {
@@ -153,7 +152,6 @@ def get_data():
         "playlist": playlist,
         "pllength": pllength,
     }
-    # print(playlist)
     response = make_response(jsonify(response))
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Pragma"] = "no-cache"
@@ -174,12 +172,10 @@ def play_song():
         database=os.getenv("MYSQL_DATABASE"),
     )
     cursor = mydb.cursor()
-    cursor.execute(f"SELECT id, url FROM playlist ORDER BY id LIMIT 1")
+    cursor.execute("SELECT id, url FROM playlist ORDER BY id LIMIT 1")
     result = cursor.fetchone()
     if result[0] == song_id and result[1] == song_url:
-        print("not skipping")
         return jsonify({"success": True})
-    # delete songs between smallest and song_id
     cursor.execute(f"DELETE FROM playlist WHERE id < {song_id}")
     mydb.commit()
     cursor.execute(
@@ -202,7 +198,7 @@ def delete_song():
         database=os.getenv("MYSQL_DATABASE"),
     )
     cursor = mydb.cursor()
-    cursor.execute(f"SELECT guild, id, url FROM playlist ORDER BY id LIMIT 1")
+    cursor.execute("SELECT guild, id, url FROM playlist ORDER BY id LIMIT 1")
     result = cursor.fetchone()
     if result[1] == song_id and result[2] == url and result[0] == guild:
         print("skipping")
@@ -218,7 +214,6 @@ def delete_song():
 def skip_song():
     data = request.get_json()
     guild = int(data.get("guild"))
-    print(guild)
     mydb = mysql.connector.connect(
         host=os.getenv("MYSQL_HOST"),
         user=os.getenv("MYSQL_USER"),
@@ -250,7 +245,6 @@ def play_pause():
         f"INSERT INTO bot_control (guild, action) VALUES (%s, %s)", (guild, "playpause")
     )
     mydb.commit()
-    print("playpause")
     return jsonify({"success": True})
 
 
@@ -342,6 +336,7 @@ def update_list():
 
     return jsonify({"success": True})
 
+
 @app.route("/add_song", methods=["POST"])
 def add_song():
     data = request.get_json()
@@ -352,13 +347,6 @@ def add_song():
     is_playlist = False
     is_url = False
 
-    mydb = mysql.connector.connect(
-        host=os.getenv("MYSQL_HOST"),
-        user=os.getenv("MYSQL_USER"),
-        password=os.getenv("MYSQL_PASSWORD"),
-        database=os.getenv("MYSQL_DATABASE"),
-    )
-    cursor = mydb.cursor()
     # Check if search is a url using regex
     protocol = r"(https:\/\/www\.|http:\/\/www\.|https:\/\/|http:\/\/)?"
     domain = r"[a-zA-Z]{2,}(\.[a-zA-Z]{2,})(\.[a-zA-Z]{2,})?"
@@ -389,5 +377,8 @@ def add_song():
             results.append({'url': info["search_result"][x]["link"], 'title': info["search_result"][x]["title"], 'duration': info["search_result"][x]["duration"]})
     return jsonify({"success": True, "results": results, "is_playlist": is_playlist, "is_url": is_url})
 
+
+port = int(os.getenv("PORT"))
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=7777)
+    app.run(host="0.0.0.0", port=port)
