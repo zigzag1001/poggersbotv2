@@ -356,7 +356,7 @@ async def play(ctx, *, search: str = None):
             await msg.edit(
                 content=f"Added {len(ytplaylist)} songs to queue...\n(Adding to playlist database)"
             )
-            yturl = ytplaylist.pop(0)
+            yturl = ytplaylist[0]
             name = 'playlist'
             for x in ytplaylist:
                 add_to_playlist(ctx, x)
