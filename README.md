@@ -73,3 +73,4 @@ For `queue` you can optionally enter a number, it will show that many songs from
 ### More notes
 - Setup is kinda complicated, I will try to make it easier in the future
 - In code documentation to be added later
+- In general, the project is a bit wonky, I used it to learn more SQL, HTML/JS/CSS and in general about how to connect a web interface to another thing
