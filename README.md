@@ -20,7 +20,7 @@
 
 1. Install a mysql server, for example [MariaDB](https://pimylifeup.com/raspberry-pi-mysql/) (that tutorial is for raspberry pi, but it shows the setup process pretty well)
 2. Create a discord app to get your token, [tutorial](https://discordpy.readthedocs.io/en/stable/discord.html)
-2. Install python, I use 3.11, havent tested with others
+2. Install FFMPEG and python, I use 3.11, havent tested with others
 3. Clone this repository
 ```
 git clone https://github.com/zigzag1001/poggersbotv2 && cd poggersbotv2
@@ -45,6 +45,8 @@ PORT = <your port>
 Notes:
 - MYSQL_HOST is usually `localhost`
 - BASE_URL is the url where the bot is hosted, for example http://example.com, can also be an ip like http://192.168.1.1
+- If you are not using 80 or 443 for your port, you need to add the port to BASE_URL, for example http://example.com:8080
+- For other people to access the web interface, you need to port forward the port you set in .env
 
 #### Usage
 
@@ -67,3 +69,7 @@ For `play` you can enter either search, url or playlist url
 For `shuffle` you can optionally enter a playlist url, it will shuffle the playlist before adding to queue
 
 For `queue` you can optionally enter a number, it will show that many songs from the queue, default is 10
+
+### More notes
+- Setup is kinda complicated, I will try to make it easier in the future
+- In code documentation to be added later
