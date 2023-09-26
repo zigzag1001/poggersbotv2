@@ -17,8 +17,6 @@ load_dotenv()
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 
-discord.opus.load_opus("libopus.so.0")
-
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix=["r; ", "r;"], intents=intents)
 
