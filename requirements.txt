@@ -5,3 +5,5 @@ youtube-search-python
 discord.py
 flask
 discord.py[voice]
+psutil
+schedule
