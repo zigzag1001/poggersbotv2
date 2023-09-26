@@ -4,3 +4,4 @@ python-dotenv
 youtube-search-python
 discord.py
 flask
+discord.py[voice]
