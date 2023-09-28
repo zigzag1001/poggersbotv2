@@ -53,7 +53,7 @@
         <div
             class="clickblocker"
             id="clickblocker"
-            style="width: 0%; height: 0%; position: fixed"
+            style="width: 0%; height: 0%; position: fixed; top: 0; left: 0;"
         ></div>
         <div id="slidingDiv">
             <div class="addsong" id="addsong">
@@ -216,12 +216,13 @@
             }
             const clicktoslideout = document.getElementById("clicktoslideout");
             const slidingDiv = document.getElementById("slidingDiv");
+            const addsong = document.getElementById("addsong");
             const searchcontainer = document.getElementById("searchcontainer");
             const searchresults = document.getElementById("searchresults");
             const form = document.getElementById("addform");
             const clickblocker = document.getElementById("clickblocker");
             function slidesearch() {
-                if (slidingDiv.style.top == "-163px") {
+                if (slidingDiv.style.top == "-158px") {
                     clickblocker.style.width = "100%";
                     clickblocker.style.height = "100%";
                     slidingDiv.style.top = "-20px";
@@ -229,7 +230,7 @@
                 } else {
                     clickblocker.style.width = "0%";
                     clickblocker.style.height = "0%";
-                    slidingDiv.style.top = "-163px";
+                    slidingDiv.style.top = "-158px";
                     slidingDiv.style.height = "143px";
                     searchcontainer.style.height = "100%";
                     searchresults.style.height = "0%";

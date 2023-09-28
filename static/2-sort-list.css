@@ -224,7 +224,7 @@ body {
     height: 143px;
     right: 50%;
     transform: translateX(50%);
-    top: -163px;
+    top: -158px;
     transition: top 0.5s ease-in-out, height 0.3s ease-in-out;
 }
 
@@ -244,7 +244,7 @@ body {
 }
 
 .searchcontainer {
-    position: absolute;
+    position: relative;
     top: 0;
     right: 50%;
     transform: translateX(50%);
@@ -255,13 +255,14 @@ body {
 .addsong {
     position: absolute;
     width: 50%;
-    height: 100%;
+    height: auto;
     right: 50%;
     top: 0;
     transform: translateX(50%);
     background-color: #636664;
     border-radius: 10px;
     padding: 10px;
+    transition: height 0.5s ease-in-out;
 }
 .addsong h2 {
     text-align: center;
@@ -274,7 +275,6 @@ body {
     justify-content: space-evenly;
     align-items: center;
     width: 100%;
-    padding-bottom: 15px;
 }
 .addsong form input {
     padding: 5px;
@@ -319,10 +319,13 @@ body {
 }
 
 #searchresults {
-    position: absolute;
+    position: relative;
+    background-color: rgb(81, 84, 82);
+    margin: auto;
+    padding: 5px;
+    border-radius: 10px;
     width: 90%;
     height: 0%;
-    top: 25%;
     opacity: 0;
     transition: opacity 1s ease-in-out;
 }
