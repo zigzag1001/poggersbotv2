@@ -1,0 +1,9 @@
+yt-dlp
+mysql-connector-python
+python-dotenv
+youtube-search-python
+discord.py
+flask
+discord.py[voice]
+psutil
+schedule

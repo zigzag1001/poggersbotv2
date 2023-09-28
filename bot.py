@@ -17,7 +17,10 @@ load_dotenv()
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> bcfcc2bb1aaafbbd474d5073cb510a7c2af59886
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix=["r; ", "r;"], intents=intents)
 
