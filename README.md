@@ -14,7 +14,11 @@
 - Supports playlists
 - Multi server support
 - Simple web interface
-- Edit queue from web interface
+- Edit queue (i.e. drag songs) from web interface
+
+#### Preview
+![general_webui_example](https://github.com/zigzag1001/poggersbotv2/assets/72932714/39e4dfaa-100c-4414-8fad-2a50c23b233f)
+![addsong_webui_example](https://github.com/zigzag1001/poggersbotv2/assets/72932714/58113ee9-5364-4743-b901-c1ae19349b46)
 
 #### Installation
 
