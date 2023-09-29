@@ -102,7 +102,8 @@ function fetchData() {
                 div4.innerText = song.id + ". - ";
                 div4.style = "white-space: pre;";
                 div5.className = "duration";
-                div5.innerText = song.duration;
+                div5.style = "white-space: pre;";
+                div5.innerText = song.duration + "  ";
                 button1.innerText = "Play";
                 button2.innerText = "Link";
                 a2.href = song.url;

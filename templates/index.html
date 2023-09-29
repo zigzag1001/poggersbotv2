@@ -16,10 +16,6 @@
             <p>Drag and drop to sort the list.</p>
         </div>
 
-        <div class="upnext">
-            <h2>Up Next</h2>
-            <h3>____________________</h3>
-        </div>
         <div class="current">
             <div class="firstimgcontainer"><img id="firstthumb" src="" /></div>
             <div class="currenttitle" id="first"></div>
@@ -31,6 +27,10 @@
             </div>
         </div>
         <div class="plcontainer">
+            <div class="upnext">
+                <h2>Up Next</h2>
+                <h3>____________________</h3>
+            </div>
             <ul id="sortlist">
                 {% for song in playlist %}
                 <li>
@@ -53,7 +53,6 @@
         <div
             class="clickblocker"
             id="clickblocker"
-            style="width: 0%; height: 0%; position: fixed; top: 0; left: 0;"
         ></div>
         <div id="slidingDiv">
             <div class="addsong" id="addsong">
@@ -87,6 +86,11 @@
             </div>
         </div>
         <script>
+            document.onkeydown = function (e) {
+                if (e.keyCode == 27) {
+                    slidesearch();
+                }
+            };
             let debounceTimeout;
 
             const skip = document.getElementById("skip");
@@ -216,6 +220,7 @@
             }
             const clicktoslideout = document.getElementById("clicktoslideout");
             const slidingDiv = document.getElementById("slidingDiv");
+            slidingDiv.style.top = "-158px";
             const addsong = document.getElementById("addsong");
             const searchcontainer = document.getElementById("searchcontainer");
             const searchresults = document.getElementById("searchresults");
@@ -225,11 +230,14 @@
                 if (slidingDiv.style.top == "-158px") {
                     clickblocker.style.width = "100%";
                     clickblocker.style.height = "100%";
+                    clickblocker.style.opacity = "0.5";
                     slidingDiv.style.top = "-20px";
                     clicktoslideout.innerHTML = "Click to hide";
+                    form.addurl.focus();
                 } else {
                     clickblocker.style.width = "0%";
                     clickblocker.style.height = "0%";
+                    clickblocker.style.opacity = "0";
                     slidingDiv.style.top = "-158px";
                     slidingDiv.style.height = "143px";
                     searchcontainer.style.height = "100%";
@@ -237,6 +245,7 @@
                     searchresults.style.opacity = "0";
                     searchresults.innerHTML = "";
                     clicktoslideout.innerHTML = "Click to add song";
+                    form.addurl.blur();
                 }
             }
             clicktoslideout.addEventListener("click", () => {

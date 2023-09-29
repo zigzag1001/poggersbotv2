@@ -70,8 +70,7 @@
 }
 
 .upnext {
-    position: absolute;
-    right: 15%;
+    position: relative;
     text-align: center;
 }
 .upnext h3 {
@@ -98,7 +97,6 @@ li {
 
 .plcontainer {
     width: 40%;
-    top: 14%;
     right: 0px;
     position: absolute;
 }
@@ -166,7 +164,7 @@ body {
     width: 55%;
     position: fixed;
     left: 4%;
-    top: 15%;
+    top: 118px;
 }
 
 .firstimgcontainer {
@@ -217,6 +215,17 @@ body {
 
 .controls button:active {
     background-color: gray;
+}
+
+.clickblocker {
+    width: 0%;
+    height: 0%;
+    position: fixed;
+    top: 0;
+    left: 0;
+    background: rgba(0, 0, 0);
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
 }
 
 #slidingDiv {
