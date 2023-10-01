@@ -41,7 +41,7 @@ PORT = 7777
 4. Hope and pray (ive got no idea how / if this works on other machines)
 5. Build and run the docker containers
 ```bash
-docker compose up --build
+sudo docker compose up --build
 ```
 
 Notes:
