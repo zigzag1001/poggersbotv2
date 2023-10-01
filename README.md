@@ -22,32 +22,29 @@
 
 #### Installation
 
-1. Install a mysql server, for example [MariaDB](https://pimylifeup.com/raspberry-pi-mysql/) (that tutorial is for raspberry pi, but it shows the setup process pretty well)
-2. Create a discord app to get your token, [tutorial](https://discordpy.readthedocs.io/en/stable/discord.html)
-2. Install FFMPEG and python, I use 3.11, havent tested with others
-3. Clone this repository
-```
+1. Install docker
+2. Clone this repository
+```bash
 git clone https://github.com/zigzag1001/poggersbotv2 && cd poggersbotv2
 ```
-4. Install dependencies
-```
-pip install -r requirements.txt
-```
-5. Create .env file with following contents:
-```
+3. Create .env file with following contents:
+```env
 DISCORD_TOKEN = <your discord bot token>
-MYSQL_HOST = <your mysql host>
-MYSQL_USER = <your mysql user>
-MYSQL_PASSWORD = <your mysql password>
-MYSQL_DATABASE = <your mysql database>
-BASE_URL = <your base url>
-PORT = <your port>
+MYSQL_HOST = mariadb
+MARIADB_ROOT_PASSWORD = root_password
+MYSQL_USER = bot_user
+MYSQL_PASSWORD = bot_password
+MYSQL_DATABASE = bot_db
+BASE_URL = http://example.com:7777/
+PORT = 7777
 ```
-6. Hope and pray (ive got no idea how / if this works on other machines)
-7. Run `start_all.sh` (i will probably add a windows version of this later)
+4. Hope and pray (ive got no idea how / if this works on other machines)
+5. Build and run the docker containers
+```bash
+docker compose up --build
+```
 
 Notes:
-- MYSQL_HOST is usually `localhost`
 - BASE_URL is the url where the bot is hosted, for example http://example.com, can also be an ip like http://192.168.1.1
 - If you are not using 80 or 443 for your port, you need to add the port to BASE_URL, for example http://example.com:8080
 - For other people to access the web interface, you need to port forward the port you set in .env
