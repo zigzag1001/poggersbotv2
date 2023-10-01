@@ -42,3 +42,6 @@ CMD ["python", "web.py"]
 
 # Pull the MariaDB image
 FROM mariadb:latest
+
+# Copy the SQL script to initialize the database
+COPY init.sql /docker-entrypoint-initdb.d/
