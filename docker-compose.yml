@@ -1,26 +1,24 @@
-version: '3'
+version: "3"
 services:
-  bot:
-    build: .
-    depends_on:
-      - db
-    networks:
-      - botnetwork
+  mariadb:
+    image: mariadb
+    env_file: .env
 
-  db:
-    build: ./db
-    networks:
-      - botnetwork
+  bot:
+    build:
+      context: .
+      dockerfile: bot.Dockerfile
+    depends_on:
+      - mariadb
+    env_file: .env
 
   web:
-    build: .
+    build:
+      context: .
+      dockerfile: web.Dockerfile
     depends_on:
-      - db
+      - mariadb
     ports:
       - "7777:7777"
-    networks:
-      - botnetwork
+    env_file: .env
 
-networks:
-  botnetwork:
-    driver: bridge
