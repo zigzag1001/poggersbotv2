@@ -1,0 +1,26 @@
+version: '3'
+services:
+  bot:
+    build: .
+    depends_on:
+      - db
+    networks:
+      - botnetwork
+
+  db:
+    build: ./db
+    networks:
+      - botnetwork
+
+  web:
+    build: .
+    depends_on:
+      - db
+    ports:
+      - "7777:7777"
+    networks:
+      - botnetwork
+
+networks:
+  botnetwork:
+    driver: bridge

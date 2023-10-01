@@ -6,14 +6,11 @@ import yt_dlp
 import asyncio
 import random
 import mysql.connector
-from dotenv import load_dotenv
 from youtubesearchpython import SearchVideos
 
 import discord
 from discord.ext import commands
 from discord.utils import get
-
-load_dotenv()
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 
