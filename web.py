@@ -1,4 +1,3 @@
-from dotenv import load_dotenv
 from flask import Flask, render_template, jsonify, make_response, request
 import os
 import re
@@ -6,8 +5,6 @@ import random
 import urllib
 import mysql.connector
 from youtubesearchpython import SearchVideos
-
-load_dotenv()
 
 app = Flask(__name__)
 
