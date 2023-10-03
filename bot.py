@@ -17,6 +17,7 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix=["r; ", "r;"], intents=intents)
 
+# Configs
 
 ytdlp_format_options = {
     "format": "bestaudio/best",
@@ -44,6 +45,7 @@ db_config = {
     "database": os.getenv("MYSQL_DATABASE"),
 }
 
+# Database
 
 mydb = mysql.connector.connect(**db_config)
 mycursor = mydb.cursor()
@@ -104,6 +106,7 @@ def is_looping(ctx):
         return False
 
 
+# Adds to playlist database, but with my id method
 def add_to_playlist(ctx, url):
     mycursor.execute(
         "SELECT id FROM playlist WHERE guild = %s ORDER BY id DESC LIMIT 1",
@@ -121,9 +124,13 @@ def add_to_playlist(ctx, url):
     )
     mydb.commit()
 
+
+# Gets yt data, if not cached, gets from yt and caches
 def get_yt_data(urls_list):
     if len(urls_list) == 0:
         return {}
+
+    # pulls data from database into a dict
     mycursor.execute(
         "SELECT url, name, duration FROM yt_data WHERE url IN (%s)"
         % (",".join(["%s"] * len(urls_list))),
@@ -137,6 +144,7 @@ def get_yt_data(urls_list):
 
     urls_list_data = {}
 
+    # checks if data is in database, if not, gets from yt and caches into db
     for url in urls_list:
         if url in resultsdict:
             urls_list_data[url] = resultsdict[url]
@@ -168,12 +176,16 @@ def get_yt_data(urls_list):
     return urls_list_data
 
 
+# if db connection is idle for 8 hours, it closes, this keeps it alive
 async def keep_db_connection():
     while True:
         mycursor.execute("SELECT 1")
         mycursor.fetchone()
         await asyncio.sleep(60)
 
+
+# Actually traverses the queue and plays audio
+# Also checks for bot control actions from db
 async def play_audio(ctx, ytplaylist=[]):
     playlist = []
     mycursor.execute(
@@ -207,6 +219,7 @@ async def play_audio(ctx, ytplaylist=[]):
                 if voice_channel != ctx.message.guild.voice_client.channel:
                     print("Bot moved")
                     voice_client.pause()
+                # Checks for bot control actions
                 mydb2 = mysql.connector.connect(
                     host=os.getenv("MYSQL_HOST"),
                     user=os.getenv("MYSQL_USER"),
@@ -295,6 +308,8 @@ async def on_message(message):
     if message.content.startswith("r;"):
         await bot.process_commands(message)
 
+
+# Properly handles empty voice channel and forced disconnects
 @bot.event
 async def on_voice_state_update(member, before, after):
     bot_voice_channel = member.guild.voice_client
@@ -337,7 +352,9 @@ async def play(ctx, *, search: str = None):
     msg = await ctx.send("Adding to queue...")
     final_regex = re.compile(f"{protocol}({domain}{path}|{subdomain}|{ip_domain})")
     plist = False
+    # If search is a url
     if re.match(final_regex, search):
+        # If search is a playlist url
         if "playlist?list=" in search:
             plist = True
             await ctx.message.add_reaction("➕")
@@ -355,10 +372,12 @@ async def play(ctx, *, search: str = None):
             name = 'playlist'
             for x in ytplaylist:
                 add_to_playlist(ctx, x)
+        # If search is a video url
         else:
             yturl = search
             name = get_yt_data([yturl])[yturl][0]
         await msg.edit(content="Added to queue...")
+    # If search is a search term
     else:
         await ctx.message.add_reaction("🔎")
         search = SearchVideos(search, offset=1, mode="json", max_results=5)
@@ -454,6 +473,7 @@ async def skip(ctx):
         await ctx.send("I am not connected to a voice channel")
         return
     voice_client = ctx.message.guild.voice_client
+    # skips by stopping current audio, play_audio will handle the rest
     voice_client.stop()
     await ctx.message.add_reaction("👍")
 
@@ -481,7 +501,7 @@ async def queue(ctx, num: int = 10):
         extra = f"\n {' '*10} + {len(playlist) - num} more, {len(playlist)} total"
     else:
         todisplay = len(playlist)
-    msgtext = "```markdown\n"
+    msgtext = "```markdown\n" # markdown looks nicer than plain
     yt_data = get_yt_data(playlist[:todisplay])
     for x in range(todisplay):
         title = yt_data[playlist[x]][0]
@@ -489,6 +509,7 @@ async def queue(ctx, num: int = 10):
         msgtext += f"{x+1}. {title} -- {duration_minsec}\n"
     print(f"Queue time taken: {time.time() - time1}")  # For debugging
     fullmsg = msgtext + extra
+    # Discord has a 2000 character limit, so if the queue is longer than that, split it into parts
     if len(fullmsg) >= 2000:
         partmsg = '```markdown\n'
         for x in range(todisplay):
@@ -503,7 +524,7 @@ async def queue(ctx, num: int = 10):
         await ctx.send(fullmsg + "```")
 
 
-@bot.command(name="shuffle", help="Shuffles the queue", aliases=["sh"])
+@bot.command(name="shuffle", help="Shuffles the queue or provided playlist", aliases=["sh"])
 async def shuffle(ctx, ytpurl=None):
     if not is_user_connected(ctx):
         await ctx.send("You are not connected to a voice channel")
@@ -513,6 +534,7 @@ async def shuffle(ctx, ytpurl=None):
         "SELECT url FROM playlist WHERE guild = %s ORDER BY id LIMIT 1", (ctx.guild.id,)
     )
     currenturl = mycursor.fetchone()
+    # If a playlist url is provided, shuffle and add to queue
     if ytpurl is not None:
         await ctx.message.add_reaction("➕")
         await msg.edit(content="Adding playlist to queue...\n(yt-dlp query)")
@@ -560,6 +582,9 @@ async def shuffle(ctx, ytpurl=None):
 async def loop(ctx):
     if not is_user_connected(ctx):
         await ctx.send("You are not connected to a voice channel")
+        return
+    if not is_connected(ctx):
+        await ctx.send("I am not connected to a voice channel")
         return
     if is_looping(ctx):
         mycursor.execute(
