@@ -207,7 +207,10 @@ async def play_audio(ctx, ytplaylist=[]):
             time1 = time.time()  # For debugging
 
             info = ytdl.extract_info(url, download=False)
-            pureurl = info["formats"][3]["url"]
+            for format in info["formats"]:
+                if format["format_id"] == "251":
+                    pureurl = format["url"]
+                    break
 
             print(f"Url retrieve time taken: {time.time() - time1}")  # For debugging
 
