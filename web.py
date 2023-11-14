@@ -3,22 +3,21 @@ import os
 import re
 import random
 import urllib
-import mysql.connector
+import sqlite3
+from dotenv import load_dotenv
 from youtubesearchpython import SearchVideos
 
 app = Flask(__name__)
 
+load_dotenv()
+
+db_name = "db/bot.db"
 
 def add_to_playlist(url, guild, addnext):
-    mydb = mysql.connector.connect(
-        host=os.getenv("MYSQL_HOST"),
-        user=os.getenv("MYSQL_USER"),
-        password=os.getenv("MYSQL_PASSWORD"),
-        database=os.getenv("MYSQL_DATABASE"),
-    )
+    mydb = sqlite3.connect(db_name)
     mycursor = mydb.cursor()
     mycursor.execute(
-        "SELECT id FROM playlist WHERE guild = %s ORDER BY id DESC LIMIT 1",
+        "SELECT id FROM playlist WHERE guild = ? ORDER BY id DESC LIMIT 1",
         (guild,),
     )
     id = mycursor.fetchone()
@@ -28,7 +27,7 @@ def add_to_playlist(url, guild, addnext):
         id = id[0] + 1
     if addnext:
         mycursor.execute(
-            "SELECT id FROM playlist WHERE guild = %s ORDER BY id LIMIT 1",
+            "SELECT id FROM playlist WHERE guild = ? ORDER BY id LIMIT 1",
             (guild,),
         )
         id = mycursor.fetchone()
@@ -37,13 +36,13 @@ def add_to_playlist(url, guild, addnext):
         else:
             id = id[0] + 1
         mycursor.execute(
-            "UPDATE playlist SET id = id + 1 WHERE id >= %s AND guild = %s",
+            "UPDATE playlist SET id = id + 1 WHERE id >= ? AND guild = ?",
             (id, guild),
         )
         mydb.commit()
 
     mycursor.execute(
-        "INSERT INTO playlist (id, guild, url) VALUES (%s, %s, %s)",
+        "INSERT INTO playlist (id, guild, url) VALUES (?, ?, ?)",
         (id, guild, url),
     )
     mydb.commit()
@@ -52,18 +51,13 @@ def add_to_playlist(url, guild, addnext):
 def get_yt_data(urls_list):
     if len(urls_list) == 0:
         return {}
-    mydb = mysql.connector.connect(
-        host=os.getenv("MYSQL_HOST"),
-        user=os.getenv("MYSQL_USER"),
-        password=os.getenv("MYSQL_PASSWORD"),
-        database=os.getenv("MYSQL_DATABASE"),
-        autocommit=True,
-    )
+    mydb = sqlite3.connect(db_name)
     mycursor = mydb.cursor()
     # makes one query for all urls
     mycursor.execute(
-        "SELECT url, name, duration FROM yt_data WHERE url IN (%s)"
-        % (",".join(["%s"] * len(urls_list))),
+        "SELECT url, name, duration FROM yt_data WHERE url IN ({})".format(
+            ",".join(["?"] * len(urls_list))
+        ),
         urls_list,
     )
     result = mycursor.fetchall()
@@ -95,11 +89,11 @@ def get_yt_data(urls_list):
             duration_minsec = f"{mins}:{secs.strip()}"
             try:
                 mycursor.execute(
-                    "INSERT INTO yt_data (url, name, duration) VALUES (%s, %s, %s)",
+                    "INSERT INTO yt_data (url, name, duration) VALUES (?, ?, ?)",
                     (url, name, duration_minsec),
                 )
                 mydb.commit()
-            except mysql.connector.errors.IntegrityError:
+            except sqlite3.IntegrityError:
                 pass
             urls_list_data[url] = (name, duration_minsec)
     return urls_list_data
@@ -113,12 +107,7 @@ def display_data():
 @app.route("/get_data", methods=["GET"])
 def get_data():
     guild = request.args.get("guild")
-    mydb = mysql.connector.connect(
-        host=os.getenv("MYSQL_HOST"),
-        user=os.getenv("MYSQL_USER"),
-        password=os.getenv("MYSQL_PASSWORD"),
-        database=os.getenv("MYSQL_DATABASE"),
-    )
+    mydb = sqlite3.connect(db_name)
     cursor = mydb.cursor()
     cursor.execute(
         f"SELECT id, url, guild FROM playlist WHERE guild = {guild} ORDER BY id"
@@ -162,12 +151,7 @@ def play_song():
     song_id = data.get("id")
     song_url = data.get("url")
     guild = int(data.get("guild"))
-    mydb = mysql.connector.connect(
-        host=os.getenv("MYSQL_HOST"),
-        user=os.getenv("MYSQL_USER"),
-        password=os.getenv("MYSQL_PASSWORD"),
-        database=os.getenv("MYSQL_DATABASE"),
-    )
+    mydb = sqlite3.connect(db_name)
     cursor = mydb.cursor()
     cursor.execute("SELECT id, url FROM playlist ORDER BY id LIMIT 1")
     result = cursor.fetchone()
@@ -176,7 +160,7 @@ def play_song():
     cursor.execute(f"DELETE FROM playlist WHERE id < {song_id}")
     mydb.commit()
     cursor.execute(
-        "INSERT INTO bot_control (guild, action) VALUES (%s, %s)", (guild, "skip")
+        "INSERT INTO bot_control (guild, action) VALUES (?, ?)", (guild, "skip")
     )
     mydb.commit()
     return jsonify({"success": True})
@@ -188,12 +172,7 @@ def delete_song():
     song_id = data.get("id")
     url = data.get("url")
     guild = int(data.get("guild"))
-    mydb = mysql.connector.connect(
-        host=os.getenv("MYSQL_HOST"),
-        user=os.getenv("MYSQL_USER"),
-        password=os.getenv("MYSQL_PASSWORD"),
-        database=os.getenv("MYSQL_DATABASE"),
-    )
+    mydb = sqlite3.connect(db_name)
     cursor = mydb.cursor()
     cursor.execute("SELECT guild, id, url FROM playlist ORDER BY id LIMIT 1")
     result = cursor.fetchone()
@@ -211,15 +190,10 @@ def delete_song():
 def skip_song():
     data = request.get_json()
     guild = int(data.get("guild"))
-    mydb = mysql.connector.connect(
-        host=os.getenv("MYSQL_HOST"),
-        user=os.getenv("MYSQL_USER"),
-        password=os.getenv("MYSQL_PASSWORD"),
-        database=os.getenv("MYSQL_DATABASE"),
-    )
+    mydb = sqlite3.connect(db_name)
     cursor = mydb.cursor()
     cursor.execute(
-        f"INSERT INTO bot_control (guild, action) VALUES (%s, %s)", (guild, "skip")
+        f"INSERT INTO bot_control (guild, action) VALUES (?, ?)", (guild, "skip")
     )
     mydb.commit()
     cursor.execute(f"DELETE FROM playlist WHERE guild = {guild} ORDER BY id LIMIT 1")
@@ -231,15 +205,10 @@ def skip_song():
 def play_pause():
     data = request.get_json()
     guild = int(data.get("guild"))
-    mydb = mysql.connector.connect(
-        host=os.getenv("MYSQL_HOST"),
-        user=os.getenv("MYSQL_USER"),
-        password=os.getenv("MYSQL_PASSWORD"),
-        database=os.getenv("MYSQL_DATABASE"),
-    )
+    mydb = sqlite3.connect(db_name)
     cursor = mydb.cursor()
     cursor.execute(
-        f"INSERT INTO bot_control (guild, action) VALUES (%s, %s)", (guild, "playpause")
+        f"INSERT INTO bot_control (guild, action) VALUES (?, ?)", (guild, "playpause")
     )
     mydb.commit()
     return jsonify({"success": True})
@@ -249,12 +218,7 @@ def play_pause():
 def shuffle():
     data = request.get_json()
     guild = int(data.get("guild"))
-    mydb = mysql.connector.connect(
-        host=os.getenv("MYSQL_HOST"),
-        user=os.getenv("MYSQL_USER"),
-        password=os.getenv("MYSQL_PASSWORD"),
-        database=os.getenv("MYSQL_DATABASE"),
-    )
+    mydb = sqlite3.connect(db_name)
     cursor = mydb.cursor()
     cursor.execute(f"SELECT id, url FROM playlist WHERE guild = {guild} ORDER BY id")
     result = cursor.fetchall()
@@ -276,12 +240,7 @@ def shuffle():
 def loop():
     data = request.get_json()
     guild = int(data.get("guild"))
-    mydb = mysql.connector.connect(
-        host=os.getenv("MYSQL_HOST"),
-        user=os.getenv("MYSQL_USER"),
-        password=os.getenv("MYSQL_PASSWORD"),
-        database=os.getenv("MYSQL_DATABASE"),
-    )
+    mydb = sqlite3.connect(db_name)
     cursor = mydb.cursor()
     cursor.execute(
         f"SELECT action FROM bot_control WHERE guild = {guild} AND action = 'loop'"
@@ -297,7 +256,7 @@ def loop():
         return jsonify({"success": True, "looping": False})
     print("adding loop")
     cursor.execute(
-        f"INSERT INTO bot_control (guild, action) VALUES (%s, %s)", (guild, "loop")
+        f"INSERT INTO bot_control (guild, action) VALUES (?, ?)", (guild, "loop")
     )
     mydb.commit()
     return jsonify({"success": True, "looping": True})
@@ -308,12 +267,7 @@ def loop():
 def update_list():
     data = request.get_json()
     guild = int(data[0].get("guild"))
-    mydb = mysql.connector.connect(
-        host=os.getenv("MYSQL_HOST"),
-        user=os.getenv("MYSQL_USER"),
-        password=os.getenv("MYSQL_PASSWORD"),
-        database=os.getenv("MYSQL_DATABASE"),
-    )
+    mydb = sqlite3.connect(db_name)
     cursor = mydb.cursor()
     unsorted_ids = []
     for song in data:
@@ -322,7 +276,7 @@ def update_list():
     sorted_ids = sorted(unsorted_ids)
     if sorted_ids[0] != unsorted_ids[0]:
         cursor.execute(
-            f"INSERT INTO bot_control (guild, action) VALUES (%s, %s)", (guild, "skip")
+            f"INSERT INTO bot_control (guild, action) VALUES (?, ?)", (guild, "skip")
         )
         mydb.commit()
     for i in range(len(sorted_ids)):
