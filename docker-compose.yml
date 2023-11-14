@@ -1,24 +1,23 @@
 version: "3"
 services:
-  mariadb:
-    image: mariadb
-    env_file: .env
 
   bot:
     build:
       context: .
       dockerfile: bot.Dockerfile
-    depends_on:
-      - mariadb
     env_file: .env
+    volumes:
+      - db:/app/db
 
   web:
     build:
       context: .
       dockerfile: web.Dockerfile
-    depends_on:
-      - mariadb
     ports:
       - "7777:7777"
     env_file: .env
+    volumes:
+      - db:/app/db
 
+volumes:
+  db:

@@ -5,12 +5,15 @@ import urllib
 import yt_dlp
 import asyncio
 import random
-import mysql.connector
+import sqlite3
+from dotenv import load_dotenv
 from youtubesearchpython import SearchVideos
 
 import discord
 from discord.ext import commands
 from discord.utils import get
+
+load_dotenv()
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 
@@ -38,31 +41,30 @@ ffmpeg_opts = {
     "options": "-vn",
 }
 
-db_config = {
-    "user": os.getenv("MYSQL_USER"),
-    "password": os.getenv("MYSQL_PASSWORD"),
-    "host": os.getenv("MYSQL_HOST"),
-    "database": os.getenv("MYSQL_DATABASE"),
-}
+db_name = "db/bot.db"
 
 # Database
 
-mydb = mysql.connector.connect(**db_config)
+mydb = sqlite3.connect(db_name)
 mycursor = mydb.cursor()
+
 # playlist
-mycursor.execute(f"DROP TABLE IF EXISTS playlist")
+mycursor.execute("DROP TABLE IF EXISTS playlist")
 mycursor.execute(
-    "CREATE TABLE IF NOT EXISTS playlist (id INT, guild BIGINT, url VARCHAR(255)) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+    "CREATE TABLE IF NOT EXISTS playlist (id INTEGER, guild INTEGER, url TEXT UNIQUE)"
 )
 
 # bot control
-mycursor.execute(f"DROP TABLE IF EXISTS bot_control")
+mycursor.execute("DROP TABLE IF EXISTS bot_control")
 mycursor.execute(
-    "CREATE TABLE IF NOT EXISTS bot_control (guild BIGINT, action VARCHAR(255), voice_channel BIGINT)"
+    "CREATE TABLE IF NOT EXISTS bot_control (guild INTEGER, action TEXT, voice_channel INTEGER)"
 )
 
 # yt data
-mycursor.execute(f"CREATE TABLE IF NOT EXISTS yt_data (url VARCHAR(255) UNIQUE, name VARCHAR(255), duration VARCHAR(255)) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+mycursor.execute("CREATE TABLE IF NOT EXISTS yt_data (url TEXT UNIQUE, name TEXT, duration TEXT)")
+
+# Commit the changes and close the connection
+mydb.commit()
 
 ytdl = yt_dlp.YoutubeDL(ytdlp_format_options)
 
@@ -86,15 +88,10 @@ def is_user_connected(ctx):
 
 
 def is_looping(ctx):
-    mydb4 = mysql.connector.connect(
-        host=os.getenv("MYSQL_HOST"),
-        user=os.getenv("MYSQL_USER"),
-        password=os.getenv("MYSQL_PASSWORD"),
-        database=os.getenv("MYSQL_DATABASE"),
-    )
+    mydb4 = sqlite3.connect(db_name)
     mycursor4 = mydb4.cursor()
     mycursor4.execute(
-        "SELECT action FROM bot_control WHERE guild = %s", (ctx.guild.id,)
+        "SELECT action FROM bot_control WHERE guild = ?", (ctx.guild.id,)
     )
     action = mycursor4.fetchone()
     if action is None:
@@ -109,7 +106,7 @@ def is_looping(ctx):
 # Adds to playlist database, but with my id method
 def add_to_playlist(ctx, url):
     mycursor.execute(
-        "SELECT id FROM playlist WHERE guild = %s ORDER BY id DESC LIMIT 1",
+        "SELECT id FROM playlist WHERE guild = ? ORDER BY id DESC LIMIT 1",
         (ctx.guild.id,),
     )
     id = mycursor.fetchone()
@@ -119,7 +116,7 @@ def add_to_playlist(ctx, url):
         id = id[0] + 1
 
     mycursor.execute(
-        "INSERT INTO playlist (id, guild, url) VALUES (%s, %s, %s)",
+        "INSERT INTO playlist (id, guild, url) VALUES (?, ?, ?)",
         (id, ctx.guild.id, url),
     )
     mydb.commit()
@@ -132,8 +129,9 @@ def get_yt_data(urls_list):
 
     # pulls data from database into a dict
     mycursor.execute(
-        "SELECT url, name, duration FROM yt_data WHERE url IN (%s)"
-        % (",".join(["%s"] * len(urls_list))),
+        "SELECT url, name, duration FROM yt_data WHERE url IN ({})".format(
+            ",".join(["?"] * len(urls_list))
+        ),
         urls_list,
     )
     result = mycursor.fetchall()
@@ -166,11 +164,11 @@ def get_yt_data(urls_list):
             duration_minsec = f"{mins}:{secs.strip()}"
             try:
                 mycursor.execute(
-                    "INSERT INTO yt_data (url, name, duration) VALUES (%s, %s, %s)",
+                    "INSERT INTO yt_data (url, name, duration) VALUES (?, ?, ?)",
                     (url, name, duration_minsec),
                 )
                 mydb.commit()
-            except mysql.connector.errors.IntegrityError:
+            except sqlite3.IntegrityError:
                 pass
             urls_list_data[url] = (name, duration_minsec)
     return urls_list_data
@@ -189,7 +187,7 @@ async def keep_db_connection():
 async def play_audio(ctx, ytplaylist=[]):
     playlist = []
     mycursor.execute(
-        "SELECT url FROM playlist WHERE guild = %s ORDER BY id", (ctx.guild.id,)
+        "SELECT url FROM playlist WHERE guild = ? ORDER BY id", (ctx.guild.id,)
     )
     for x in mycursor:
         playlist.append(x[0])
@@ -223,15 +221,10 @@ async def play_audio(ctx, ytplaylist=[]):
                     print("Bot moved")
                     voice_client.pause()
                 # Checks for bot control actions
-                mydb2 = mysql.connector.connect(
-                    host=os.getenv("MYSQL_HOST"),
-                    user=os.getenv("MYSQL_USER"),
-                    password=os.getenv("MYSQL_PASSWORD"),
-                    database=os.getenv("MYSQL_DATABASE"),
-                )
-                mycursor2 = mydb2.cursor(buffered=True)
+                mydb2 = sqlite3.connect(db_name)
+                mycursor2 = mydb2.cursor()
                 mycursor2.execute(
-                    "SELECT action FROM bot_control WHERE guild = %s", (ctx.guild.id,)
+                    "SELECT action FROM bot_control WHERE guild = ?", (ctx.guild.id,)
                 )
                 action = mycursor2.fetchone()
                 if action is not None:
@@ -239,13 +232,13 @@ async def play_audio(ctx, ytplaylist=[]):
                         print("Skipping...")
                         voice_client.stop()
                         mycursor2.execute(
-                            "DELETE FROM bot_control WHERE guild = %s AND action = %s",
+                            "DELETE FROM bot_control WHERE guild = ? AND action = ?",
                             (ctx.guild.id, "skip"),
                         )
                         mydb2.commit()
                     elif action[0] == "playpause":
                         mycursor2.execute(
-                            "DELETE FROM bot_control WHERE guild = %s AND action = %s",
+                            "DELETE FROM bot_control WHERE guild = ? AND action = ?",
                             (ctx.guild.id, "playpause"),
                         )
                         mydb2.commit()
@@ -253,15 +246,10 @@ async def play_audio(ctx, ytplaylist=[]):
                             voice_client.pause()
                             paused = True
                         while paused:
-                            mydb3 = mysql.connector.connect(
-                                host=os.getenv("MYSQL_HOST"),
-                                user=os.getenv("MYSQL_USER"),
-                                password=os.getenv("MYSQL_PASSWORD"),
-                                database=os.getenv("MYSQL_DATABASE"),
-                            )
-                            mycursor3 = mydb3.cursor(buffered=True)
+                            mydb3 = sqlite3.connect(db_name)
+                            mycursor3 = mydb3.cursor()
                             mycursor3.execute(
-                                "SELECT action FROM bot_control WHERE guild = %s AND action = %s",
+                                "SELECT action FROM bot_control WHERE guild = ? AND action = ?",
                                 (ctx.guild.id, "playpause"),
                             )
                             action = mycursor3.fetchone()
@@ -269,7 +257,7 @@ async def play_audio(ctx, ytplaylist=[]):
                                 await asyncio.sleep(1)
                             else:
                                 mycursor3.execute(
-                                    "DELETE FROM bot_control WHERE guild = %s AND action = %s",
+                                    "DELETE FROM bot_control WHERE guild = ? AND action = ?",
                                     (ctx.guild.id, "playpause"),
                                 )
                                 mydb3.commit()
@@ -282,14 +270,14 @@ async def play_audio(ctx, ytplaylist=[]):
             await ctx.send("Error playing audio, skipping...")
         if not is_looping(ctx):
             mycursor.execute(
-                "DELETE FROM playlist WHERE url = %s AND guild = %s",
+                "DELETE FROM playlist WHERE url = ? AND guild = ?",
                 (url, ctx.guild.id),
             )
             mydb.commit()
 
         playlist = []
         mycursor.execute(
-            "SELECT url FROM playlist WHERE guild = %s ORDER BY id", (ctx.guild.id,)
+            "SELECT url FROM playlist WHERE guild = ? ORDER BY id", (ctx.guild.id,)
         )
         for x in mycursor:
             playlist.append(x[0])
@@ -416,7 +404,7 @@ async def play(ctx, *, search: str = None):
 
     await msg.edit(content = f"Added {name} to queue")
     mycursor.execute(
-        "SELECT id, url FROM playlist WHERE guild = %s ORDER BY id", (ctx.guild.id,)
+        "SELECT id, url FROM playlist WHERE guild = ? ORDER BY id", (ctx.guild.id,)
     )
     result = mycursor.fetchall()
     addnext = False
@@ -432,11 +420,11 @@ async def play(ctx, *, search: str = None):
                 addnext = True
                 secondid = result[1][0]
                 mycursor.execute(
-                    "UPDATE playlist SET id = id + 1 WHERE id >= %s AND guild = %s",
+                    "UPDATE playlist SET id = id + 1 WHERE id >= ? AND guild = ?",
                     (secondid, ctx.guild.id),
                 )
                 mycursor.execute(
-                    "INSERT INTO playlist (id, url, guild) VALUES (%s, %s, %s)",
+                    "INSERT INTO playlist (id, url, guild) VALUES (?, ?, ?)",
                     (secondid, yturl, ctx.guild.id),
                 )
                 mydb.commit()
@@ -462,7 +450,7 @@ async def stop(ctx, guild=None):
             await ctx.send("I am not connected to a voice channel")
             return
         guild = ctx.guild
-    mycursor.execute("DELETE FROM playlist WHERE guild = %s", (guild.id,))
+    mycursor.execute("DELETE FROM playlist WHERE guild = ?", (guild.id,))
     voice_client = guild.voice_client
     await voice_client.disconnect()
 
@@ -490,7 +478,7 @@ async def queue(ctx, num: int = 10):
     await ctx.message.add_reaction("👍")
     playlist = []
     mycursor.execute(
-        "SELECT url FROM playlist WHERE guild = %s ORDER BY id",
+        "SELECT url FROM playlist WHERE guild = ? ORDER BY id",
         (ctx.guild.id,),
     )
     for x in mycursor:
@@ -534,7 +522,7 @@ async def shuffle(ctx, ytpurl=None):
         return
     msg = await ctx.send("Shuffling...")
     mycursor.execute(
-        "SELECT url FROM playlist WHERE guild = %s ORDER BY id LIMIT 1", (ctx.guild.id,)
+        "SELECT url FROM playlist WHERE guild = ? ORDER BY id LIMIT 1", (ctx.guild.id,)
     )
     currenturl = mycursor.fetchone()
     # If a playlist url is provided, shuffle and add to queue
@@ -591,13 +579,13 @@ async def loop(ctx):
         return
     if is_looping(ctx):
         mycursor.execute(
-            "DELETE FROM bot_control WHERE guild = %s AND action = %s",
+            "DELETE FROM bot_control WHERE guild = ? AND action = ?",
             (ctx.guild.id, "loop"),
         )
         await ctx.send("Stopped looping")
     else:
         mycursor.execute(
-            "INSERT INTO bot_control (guild, action) VALUES (%s, %s)",
+            "INSERT INTO bot_control (guild, action) VALUES (?, ?)",
             (ctx.guild.id, "loop"),
         )
         await ctx.send("Looping current song")
@@ -614,7 +602,7 @@ async def pause(ctx):
         await ctx.send("I am not connected to a voice channel")
         return
     mycursor.execute(
-        "INSERT INTO bot_control (guild, action) VALUES (%s, %s)",
+        "INSERT INTO bot_control (guild, action) VALUES (?, ?)",
         (ctx.guild.id, "playpause"),
     )
     mydb.commit()
