@@ -30,11 +30,6 @@ git clone https://github.com/zigzag1001/poggersbotv2 && cd poggersbotv2
 3. Create .env file with following contents:
 ```env
 DISCORD_TOKEN = <your discord bot token>
-MYSQL_HOST = mariadb
-MARIADB_ROOT_PASSWORD = root_password
-MYSQL_USER = bot_user
-MYSQL_PASSWORD = bot_password
-MYSQL_DATABASE = bot_db
 BASE_URL = http://example.com:7777/
 PORT = 7777
 ```

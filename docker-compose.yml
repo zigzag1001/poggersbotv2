@@ -14,7 +14,7 @@ services:
       context: .
       dockerfile: web.Dockerfile
     ports:
-      - "7777:7777"
+      - ${PORT}:${PORT}
     env_file: .env
     volumes:
       - db:/app/db
