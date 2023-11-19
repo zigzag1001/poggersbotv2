@@ -7,3 +7,4 @@ flask
 discord.py[voice]
 psutil
 schedule
+spotdl
