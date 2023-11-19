@@ -413,6 +413,14 @@ async def play(ctx, *, search: str = None):
                     resultnum = x
                     await smsg.delete()
                     break
+            # get next message, if its a number 1-5, set resultnum
+            channel = ctx.channel
+            last_message = await channel.fetch_message(channel.last_message_id)
+            if last_message.content in ["1", "2", "3", "4", "5"] and last_message.author != bot.user:
+                resultnum = int(last_message.content) - 1
+                await last_message.add_reaction("👍")
+                await smsg.delete()
+                break
             if resultnum != -1:
                 break
             await asyncio.sleep(1)
