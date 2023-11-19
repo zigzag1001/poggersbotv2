@@ -407,12 +407,6 @@ async def play(ctx, *, search: str = None):
             await smsg.add_reaction(f"{x+1}\N{combining enclosing keycap}")
         await smsg.add_reaction("❌")
         for i in range(10):
-            reacts = get(bot.cached_messages, id=smsg.id).reactions
-            for x in range(6):
-                if reacts[x].count > 1:
-                    resultnum = x
-                    await smsg.delete()
-                    break
             # get next message, if its a number 1-5, set resultnum
             channel = ctx.channel
             last_message = await channel.fetch_message(channel.last_message_id)
@@ -421,6 +415,12 @@ async def play(ctx, *, search: str = None):
                 await last_message.add_reaction("👍")
                 await smsg.delete()
                 break
+            reacts = get(bot.cached_messages, id=smsg.id).reactions
+            for x in range(6):
+                if reacts[x].count > 1:
+                    resultnum = x
+                    await smsg.delete()
+                    break
             if resultnum != -1:
                 break
             await asyncio.sleep(1)
