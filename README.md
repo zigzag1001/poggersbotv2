@@ -34,9 +34,9 @@ BASE_URL = http://example.com:7777/
 PORT = 7777
 ```
 4. Hope and pray (ive got no idea how / if this works on other machines)
-5. Build and run the docker containers
+5. Build and run the docker containers (you might need to run as sudo)
 ```bash
-sudo docker compose up --build
+docker compose up
 ```
 
 Notes:
@@ -67,6 +67,4 @@ For `shuffle` you can optionally enter a playlist url, it will shuffle the playl
 For `queue` you can optionally enter a number, it will show that many songs from the queue, default is 10
 
 ### More notes
-- Setup is kinda complicated, I will try to make it easier in the future
-- In code documentation to be added later
 - In general, the project is a bit wonky, I used it to learn more SQL, HTML/JS/CSS and in general about how to connect a web interface to another thing
