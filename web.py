@@ -114,8 +114,8 @@ def get_data():
     cursor.execute(
         f"SELECT id, url, guild FROM playlist WHERE guild = {guild} ORDER BY id"
     )
-    mydb.close()
     result = cursor.fetchall()
+    mydb.close()
     pllength = len(result)
     playlist = []
     toshow = 10

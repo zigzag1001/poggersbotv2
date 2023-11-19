@@ -203,9 +203,9 @@ async def play_audio(ctx, ytplaylist=[]):
     mycursor.execute(
         "SELECT url FROM playlist WHERE guild = ? ORDER BY id", (ctx.guild.id,)
     )
-    mydb.close()
     for x in mycursor:
         playlist.append(x[0])
+    mydb.close()
 
     while playlist != []:
         if not is_connected(ctx):
@@ -292,7 +292,7 @@ async def play_audio(ctx, ytplaylist=[]):
         mycursor = mydb.cursor()
         if not is_looping(ctx):
             mycursor.execute(
-                "DELETE FROM playlist WHERE url = ? AND guild = ?",
+                "DELETE FROM playlist WHERE url = ? AND guild = ? ORDER BY id LIMIT 1",
                 (url, ctx.guild.id),
             )
             mydb.commit()
@@ -301,9 +301,9 @@ async def play_audio(ctx, ytplaylist=[]):
         mycursor.execute(
             "SELECT url FROM playlist WHERE guild = ? ORDER BY id", (ctx.guild.id,)
         )
-        mydb.close()
         for x in mycursor:
             playlist.append(x[0])
+        mydb.close()
 
 
 # Events
@@ -513,9 +513,9 @@ async def queue(ctx, num: int = 10):
         "SELECT url FROM playlist WHERE guild = ? ORDER BY id",
         (ctx.guild.id,),
     )
-    mydb.close()
     for x in mycursor:
         playlist.append(x[0])
+    mydb.close()
     if playlist == []:
         await ctx.send("The queue is empty")
         return
