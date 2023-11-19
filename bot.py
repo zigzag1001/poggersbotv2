@@ -51,7 +51,7 @@ mycursor = mydb.cursor()
 # playlist
 mycursor.execute("DROP TABLE IF EXISTS playlist")
 mycursor.execute(
-    "CREATE TABLE IF NOT EXISTS playlist (id INTEGER, guild INTEGER, url TEXT UNIQUE)"
+    "CREATE TABLE IF NOT EXISTS playlist (id INTEGER, guild INTEGER, url TEXT)"
 )
 
 # bot control
@@ -65,6 +65,8 @@ mycursor.execute("CREATE TABLE IF NOT EXISTS yt_data (url TEXT UNIQUE, name TEXT
 
 # Commit the changes and close the connection
 mydb.commit()
+mydb.close()
+
 
 ytdl = yt_dlp.YoutubeDL(ytdlp_format_options)
 
@@ -88,12 +90,13 @@ def is_user_connected(ctx):
 
 
 def is_looping(ctx):
-    mydb4 = sqlite3.connect(db_name)
-    mycursor4 = mydb4.cursor()
-    mycursor4.execute(
+    mydb = sqlite3.connect(db_name)
+    mycursor = mydb.cursor()
+    mycursor.execute(
         "SELECT action FROM bot_control WHERE guild = ?", (ctx.guild.id,)
     )
-    action = mycursor4.fetchone()
+    action = mycursor.fetchone()
+    mydb.close()
     if action is None:
         return False
     elif action[0] == "loop":
@@ -105,6 +108,8 @@ def is_looping(ctx):
 
 # Adds to playlist database, but with my id method
 def add_to_playlist(ctx, url):
+    mydb = sqlite3.connect(db_name)
+    mycursor = mydb.cursor()
     mycursor.execute(
         "SELECT id FROM playlist WHERE guild = ? ORDER BY id DESC LIMIT 1",
         (ctx.guild.id,),
@@ -120,6 +125,7 @@ def add_to_playlist(ctx, url):
         (id, ctx.guild.id, url),
     )
     mydb.commit()
+    mydb.close()
 
 
 # Gets yt data, if not cached, gets from yt and caches
@@ -128,6 +134,8 @@ def get_yt_data(urls_list):
         return {}
 
     # pulls data from database into a dict
+    mydb = sqlite3.connect(db_name)
+    mycursor = mydb.cursor()
     mycursor.execute(
         "SELECT url, name, duration FROM yt_data WHERE url IN ({})".format(
             ",".join(["?"] * len(urls_list))
@@ -171,14 +179,18 @@ def get_yt_data(urls_list):
             except sqlite3.IntegrityError:
                 pass
             urls_list_data[url] = (name, duration_minsec)
+    mydb.close()
     return urls_list_data
 
 
 # if db connection is idle for 8 hours, it closes, this keeps it alive
 async def keep_db_connection():
     while True:
+        mydb = sqlite3.connect(db_name)
+        mycursor = mydb.cursor()
         mycursor.execute("SELECT 1")
         mycursor.fetchone()
+        mydb.close()
         await asyncio.sleep(60)
 
 
@@ -186,9 +198,12 @@ async def keep_db_connection():
 # Also checks for bot control actions from db
 async def play_audio(ctx, ytplaylist=[]):
     playlist = []
+    mydb = sqlite3.connect(db_name)
+    mycursor = mydb.cursor()
     mycursor.execute(
         "SELECT url FROM playlist WHERE guild = ? ORDER BY id", (ctx.guild.id,)
     )
+    mydb.close()
     for x in mycursor:
         playlist.append(x[0])
 
@@ -217,57 +232,64 @@ async def play_audio(ctx, ytplaylist=[]):
             voice_client.play(source)
             print(f"Playing {url}")
             while voice_client.is_playing():
+                mydb = sqlite3.connect(db_name)
+                mycursor = mydb.cursor()
                 if voice_channel != ctx.message.guild.voice_client.channel:
                     print("Bot moved")
                     voice_client.pause()
                 # Checks for bot control actions
-                mydb2 = sqlite3.connect(db_name)
-                mycursor2 = mydb2.cursor()
-                mycursor2.execute(
+                mycursor.execute(
                     "SELECT action FROM bot_control WHERE guild = ?", (ctx.guild.id,)
                 )
-                action = mycursor2.fetchone()
+                action = mycursor.fetchone()
+                mydb.close()
                 if action is not None:
+                    mydb = sqlite3.connect(db_name)
+                    mycursor = mydb.cursor()
                     if action[0] == "skip":
                         print("Skipping...")
                         voice_client.stop()
-                        mycursor2.execute(
+                        mycursor.execute(
                             "DELETE FROM bot_control WHERE guild = ? AND action = ?",
                             (ctx.guild.id, "skip"),
                         )
-                        mydb2.commit()
+                        mydb.commit()
+                        mydb.close()
                     elif action[0] == "playpause":
-                        mycursor2.execute(
+                        mycursor.execute(
                             "DELETE FROM bot_control WHERE guild = ? AND action = ?",
                             (ctx.guild.id, "playpause"),
                         )
-                        mydb2.commit()
+                        mydb.commit()
                         if is_playing(ctx):
                             voice_client.pause()
                             paused = True
                         while paused:
-                            mydb3 = sqlite3.connect(db_name)
-                            mycursor3 = mydb3.cursor()
-                            mycursor3.execute(
+                            mydb = sqlite3.connect(db_name)
+                            mycursor = mydb.cursor()
+                            mycursor.execute(
                                 "SELECT action FROM bot_control WHERE guild = ? AND action = ?",
                                 (ctx.guild.id, "playpause"),
                             )
-                            action = mycursor3.fetchone()
+                            action = mycursor.fetchone()
                             if action is None:
                                 await asyncio.sleep(1)
                             else:
-                                mycursor3.execute(
+                                mycursor.execute(
                                     "DELETE FROM bot_control WHERE guild = ? AND action = ?",
                                     (ctx.guild.id, "playpause"),
                                 )
-                                mydb3.commit()
+                                mydb.commit()
                                 paused = False
+                        mydb.close()
                         voice_client.resume()
                 await asyncio.sleep(1)
             voice_client.stop()
         except Exception as e:
             print(e)
             await ctx.send("Error playing audio, skipping...")
+        mydb = sqlite3.connect(db_name)
+        mycursor = mydb.cursor()
         if not is_looping(ctx):
             mycursor.execute(
                 "DELETE FROM playlist WHERE url = ? AND guild = ?",
@@ -279,6 +301,7 @@ async def play_audio(ctx, ytplaylist=[]):
         mycursor.execute(
             "SELECT url FROM playlist WHERE guild = ? ORDER BY id", (ctx.guild.id,)
         )
+        mydb.close()
         for x in mycursor:
             playlist.append(x[0])
 
@@ -403,6 +426,8 @@ async def play(ctx, *, search: str = None):
         name = info["search_result"][resultnum]["title"]
 
     await msg.edit(content = f"Added {name} to queue")
+    mydb = sqlite3.connect(db_name)
+    mycursor = mydb.cursor()
     mycursor.execute(
         "SELECT id, url FROM playlist WHERE guild = ? ORDER BY id", (ctx.guild.id,)
     )
@@ -436,6 +461,7 @@ async def play(ctx, *, search: str = None):
     if addnext is False:
         add_to_playlist(ctx, yturl)
     await ctx.message.add_reaction("👍")
+    mydb.close()
     if not is_playing(ctx):
         await play_audio(ctx, ytplaylist)
 
@@ -450,7 +476,11 @@ async def stop(ctx, guild=None):
             await ctx.send("I am not connected to a voice channel")
             return
         guild = ctx.guild
+    mydb = sqlite3.connect(db_name)
+    mycursor = mydb.cursor()
     mycursor.execute("DELETE FROM playlist WHERE guild = ?", (guild.id,))
+    mydb.commit()
+    mydb.close()
     voice_client = guild.voice_client
     await voice_client.disconnect()
 
@@ -477,10 +507,13 @@ async def queue(ctx, num: int = 10):
     time1 = time.time()  # For debugging
     await ctx.message.add_reaction("👍")
     playlist = []
+    mydb = sqlite3.connect(db_name)
+    mycursor = mydb.cursor()
     mycursor.execute(
         "SELECT url FROM playlist WHERE guild = ? ORDER BY id",
         (ctx.guild.id,),
     )
+    mydb.close()
     for x in mycursor:
         playlist.append(x[0])
     if playlist == []:
@@ -521,6 +554,8 @@ async def shuffle(ctx, ytpurl=None):
         await ctx.send("You are not connected to a voice channel")
         return
     msg = await ctx.send("Shuffling...")
+    mydb = sqlite3.connect(db_name)
+    mycursor = mydb.cursor()
     mycursor.execute(
         "SELECT url FROM playlist WHERE guild = ? ORDER BY id LIMIT 1", (ctx.guild.id,)
     )
@@ -561,6 +596,7 @@ async def shuffle(ctx, ytpurl=None):
     for i in range(len(ids)):
         mycursor.execute(f"UPDATE playlist SET id = {ids[i]} WHERE url = '{urls[i]}' AND guild = {ctx.guild.id}")
         mydb.commit()
+    mydb.close()
     await ctx.message.add_reaction("👍")
     await msg.edit(content="Shuffled...\n(Loading titles for queue)")
     await queue(ctx)
@@ -577,6 +613,8 @@ async def loop(ctx):
     if not is_connected(ctx):
         await ctx.send("I am not connected to a voice channel")
         return
+    mydb = sqlite3.connect(db_name)
+    mycursor = mydb.cursor()
     if is_looping(ctx):
         mycursor.execute(
             "DELETE FROM bot_control WHERE guild = ? AND action = ?",
@@ -591,6 +629,7 @@ async def loop(ctx):
         await ctx.send("Looping current song")
     await ctx.message.add_reaction("👍")
     mydb.commit()
+    mydb.close()
 
 
 @bot.command(name="pause", help="Pauses/unpauses the bot", aliases=["resume", "unpause"])
@@ -601,11 +640,14 @@ async def pause(ctx):
     if not is_connected(ctx):
         await ctx.send("I am not connected to a voice channel")
         return
+    mydb = sqlite3.connect(db_name)
+    mycursor = mydb.cursor()
     mycursor.execute(
         "INSERT INTO bot_control (guild, action) VALUES (?, ?)",
         (ctx.guild.id, "playpause"),
     )
     mydb.commit()
+    mydb.close()
     await ctx.message.add_reaction("👍")
 
 

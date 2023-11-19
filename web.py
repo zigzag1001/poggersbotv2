@@ -46,6 +46,7 @@ def add_to_playlist(url, guild, addnext):
         (id, guild, url),
     )
     mydb.commit()
+    mydb.close()
 
 
 def get_yt_data(urls_list):
@@ -96,6 +97,7 @@ def get_yt_data(urls_list):
             except sqlite3.IntegrityError:
                 pass
             urls_list_data[url] = (name, duration_minsec)
+    mydb.close()
     return urls_list_data
 
 
@@ -112,6 +114,7 @@ def get_data():
     cursor.execute(
         f"SELECT id, url, guild FROM playlist WHERE guild = {guild} ORDER BY id"
     )
+    mydb.close()
     result = cursor.fetchall()
     pllength = len(result)
     playlist = []
@@ -163,6 +166,7 @@ def play_song():
         "INSERT INTO bot_control (guild, action) VALUES (?, ?)", (guild, "skip")
     )
     mydb.commit()
+    mydb.close()
     return jsonify({"success": True})
 
 
@@ -183,6 +187,7 @@ def delete_song():
         )
     cursor.execute(f"DELETE FROM playlist WHERE id = {song_id} AND url = '{url}'")
     mydb.commit()
+    mydb.close()
     return jsonify({"success": True})
 
 
@@ -198,6 +203,7 @@ def skip_song():
     mydb.commit()
     cursor.execute(f"DELETE FROM playlist WHERE guild = {guild} ORDER BY id LIMIT 1")
     mydb.commit()
+    mydb.close()
     return jsonify({"success": True})
 
 
@@ -211,6 +217,7 @@ def play_pause():
         f"INSERT INTO bot_control (guild, action) VALUES (?, ?)", (guild, "playpause")
     )
     mydb.commit()
+    mydb.close()
     return jsonify({"success": True})
 
 
@@ -233,6 +240,7 @@ def shuffle():
     for i in range(len(ids)):
         cursor.execute(f"UPDATE playlist SET id = {ids[i]} WHERE url = '{urls[i]}' AND guild = {guild}")
         mydb.commit()
+    mydb.close()
     return jsonify({"success": True})
 
 
@@ -259,6 +267,7 @@ def loop():
         f"INSERT INTO bot_control (guild, action) VALUES (?, ?)", (guild, "loop")
     )
     mydb.commit()
+    mydb.close()
     return jsonify({"success": True, "looping": True})
 
 
@@ -284,7 +293,7 @@ def update_list():
             f"UPDATE playlist SET id = {sorted_ids[i]} WHERE url = '{data[i].get('url')}' AND guild = {guild}"
         )
         mydb.commit()
-
+    mydb.close()
     return jsonify({"success": True})
 
 
