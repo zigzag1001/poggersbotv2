@@ -51,7 +51,7 @@ mycursor = mydb.cursor()
 # playlist
 mycursor.execute("DROP TABLE IF EXISTS playlist")
 mycursor.execute(
-    "CREATE TABLE IF NOT EXISTS playlist (id INTEGER, guild INTEGER, url TEXT UNIQUE)"
+    "CREATE TABLE IF NOT EXISTS playlist (id INTEGER, guild INTEGER, url TEXT)"
 )
 
 # bot control
