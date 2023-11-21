@@ -183,17 +183,6 @@ def get_yt_data(urls_list):
     return urls_list_data
 
 
-# if db connection is idle for 8 hours, it closes, this keeps it alive
-async def keep_db_connection():
-    while True:
-        mydb = sqlite3.connect(db_name)
-        mycursor = mydb.cursor()
-        mycursor.execute("SELECT 1")
-        mycursor.fetchone()
-        mydb.close()
-        await asyncio.sleep(60)
-
-
 # Actually traverses the queue and plays audio
 # Also checks for bot control actions from db
 async def play_audio(ctx, ytplaylist=[]):
@@ -342,7 +331,7 @@ async def on_voice_state_update(member, before, after):
 # Commands
 @bot.command(
     name="play",
-    help="Adds a song to queue, url or search term",
+    help="Adds a song to queue, can be url or search term",
     aliases=["p", "search"],
 )
 async def play(ctx, *, search: str = None):
@@ -657,6 +646,8 @@ async def pause(ctx):
     mydb.commit()
     mydb.close()
     await ctx.message.add_reaction("👍")
+    if not is_playing(ctx):
+        await play_audio(ctx)
 
 
 @bot.command(name="web", help="Shows the web interface link", aliases=["website", "w"])
