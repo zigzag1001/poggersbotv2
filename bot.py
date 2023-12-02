@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 from youtubesearchpython import SearchVideos
 
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord.utils import get
 
 load_dotenv()
@@ -197,7 +197,7 @@ async def play_audio(ctx, ytplaylist=[]):
     mydb.close()
 
     while playlist != []:
-        if not is_connected(ctx):
+        if not is_connected(ctx): 
             await web(ctx, "Web interface: ")
             await ctx.author.voice.channel.connect()
         voice_client = ctx.message.guild.voice_client
@@ -293,6 +293,8 @@ async def play_audio(ctx, ytplaylist=[]):
         for x in mycursor:
             playlist.append(x[0])
         mydb.close()
+        if not play_if_not_playing.is_running():
+            play_if_not_playing.start(ctx)
 
 
 # Events
@@ -300,7 +302,6 @@ async def play_audio(ctx, ytplaylist=[]):
 async def on_ready():
     print(f"{bot.user.name} has connected to Discord!")
     await bot.change_presence(activity=discord.Game(name="r;help"))
-    await keep_db_connection()
 
 
 @bot.event
@@ -327,6 +328,23 @@ async def on_voice_state_update(member, before, after):
         await stop(None, member.guild)
         return
 
+
+# if playlist not empty, play audio, check every 5 seconds
+@tasks.loop(seconds=5)
+async def play_if_not_playing(ctx):
+    if is_playing(ctx):
+        return
+    mydb = sqlite3.connect(db_name)
+    mycursor = mydb.cursor()
+    mycursor.execute(
+        "SELECT url FROM playlist WHERE guild = ? ORDER BY id", (ctx.guild.id,)
+    )
+    playlist = []
+    for x in mycursor:
+        playlist.append(x[0])
+    mydb.close()
+    if playlist != [] and is_connected(ctx):
+        await play_audio(ctx)
 
 # Commands
 @bot.command(
@@ -480,6 +498,21 @@ async def stop(ctx, guild=None):
     mydb.close()
     voice_client = guild.voice_client
     await voice_client.disconnect()
+    if play_if_not_playing.is_running():
+        play_if_not_playing.cancel()
+
+
+@bot.command(name="clear", help="Clears the queue", aliases=["c"])
+async def clear(ctx):
+    if not is_user_connected(ctx):
+        await ctx.send("You are not connected to a voice channel")
+        return
+    mydb = sqlite3.connect(db_name)
+    mycursor = mydb.cursor()
+    mycursor.execute("DELETE FROM playlist WHERE guild = ?", (ctx.guild.id,))
+    mydb.commit()
+    mydb.close()
+    await ctx.message.add_reaction("👍")
 
 
 @bot.command(name="skip", help="Skips current song", aliases=["next", "s"])
@@ -664,6 +697,8 @@ async def join(ctx):
     await ctx.message.add_reaction("👍")
     if not is_connected(ctx):
         await ctx.author.voice.channel.connect()
+        if not play_if_not_playing.is_running():
+            play_if_not_playing.start(ctx)
     if not is_playing(ctx):
         await play_audio(ctx)
 
