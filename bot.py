@@ -187,6 +187,7 @@ def get_yt_data(urls_list):
 # Also checks for bot control actions from db
 async def play_audio(ctx, ytplaylist=[]):
     playlist = []
+    five_times = 0
     mydb = sqlite3.connect(db_name)
     mycursor = mydb.cursor()
     mycursor.execute(
@@ -196,7 +197,24 @@ async def play_audio(ctx, ytplaylist=[]):
         playlist.append(x[0])
     mydb.close()
 
-    while playlist != []:
+    while True:
+        if playlist == []:
+            await asyncio.sleep(5)
+            five_times += 1
+            if five_times == 120:
+                await stop(ctx)
+                return
+            playlist = []
+            mydb = sqlite3.connect(db_name)
+            mycursor = mydb.cursor()
+            mycursor.execute(
+                "SELECT url FROM playlist WHERE guild = ? ORDER BY id", (ctx.guild.id,)
+            )
+            for x in mycursor:
+                playlist.append(x[0])
+            mydb.close()
+            continue
+        five_times = 0
         if not is_connected(ctx): 
             await web(ctx, "Web interface: ")
             await ctx.author.voice.channel.connect()
@@ -293,8 +311,6 @@ async def play_audio(ctx, ytplaylist=[]):
         for x in mycursor:
             playlist.append(x[0])
         mydb.close()
-        if not play_if_not_playing.is_running():
-            play_if_not_playing.start(ctx)
 
 
 # Events
@@ -329,23 +345,6 @@ async def on_voice_state_update(member, before, after):
         return
 
 
-# if playlist not empty, play audio, check every 5 seconds
-@tasks.loop(seconds=5)
-async def play_if_not_playing(ctx):
-    if is_playing(ctx):
-        return
-    mydb = sqlite3.connect(db_name)
-    mycursor = mydb.cursor()
-    mycursor.execute(
-        "SELECT url FROM playlist WHERE guild = ? ORDER BY id", (ctx.guild.id,)
-    )
-    playlist = []
-    for x in mycursor:
-        playlist.append(x[0])
-    mydb.close()
-    if playlist != [] and is_connected(ctx):
-        await play_audio(ctx)
-
 # Commands
 @bot.command(
     name="play",
@@ -373,6 +372,7 @@ async def play(ctx, *, search: str = None):
     msg = await ctx.send("Adding to queue...")
     final_regex = re.compile(f"{protocol}({domain}{path}|{subdomain}|{ip_domain})")
     plist = False
+    vidplist = False
     # If search is a url
     if re.match(final_regex, search):
         # If search is a playlist url
@@ -397,6 +397,20 @@ async def play(ctx, *, search: str = None):
         else:
             yturl = search
             name = get_yt_data([yturl])[yturl][0]
+            if "&list=" in yturl:
+                plistmsg = await ctx.send("Do you want to add the playlist to queue?")
+                await plistmsg.add_reaction("✅")
+                await plistmsg.add_reaction("❌")
+                for i in range(5):
+                    reacts = get(bot.cached_messages, id=plistmsg.id).reactions
+                    if reacts[0].count > 1:
+                        plist = True
+                        vidplist = True
+                        break
+                    elif reacts[1].count > 1:
+                        await plistmsg.delete()
+                        break
+                    await asyncio.sleep(1)
         await msg.edit(content="Added to queue...")
     # If search is a search term
     else:
@@ -477,6 +491,16 @@ async def play(ctx, *, search: str = None):
         add_to_playlist(ctx, yturl)
     await ctx.message.add_reaction("👍")
     mydb.close()
+    if vidplist is True:
+        plistid = yturl.split("&list=")[1]
+        plisturl = f"https://www.youtube.com/playlist?list={plistid}"
+        ytplaylist = (
+                str(os.popen(f"yt-dlp {plisturl} --flat-playlist --get-url").read())
+                .strip()
+                .split("\n")
+            )
+        for x in ytplaylist:
+            add_to_playlist(ctx, x)
     if not is_playing(ctx):
         await play_audio(ctx, ytplaylist)
 
@@ -498,8 +522,6 @@ async def stop(ctx, guild=None):
     mydb.close()
     voice_client = guild.voice_client
     await voice_client.disconnect()
-    if play_if_not_playing.is_running():
-        play_if_not_playing.cancel()
 
 
 @bot.command(name="clear", help="Clears the queue", aliases=["c"])
@@ -697,8 +719,6 @@ async def join(ctx):
     await ctx.message.add_reaction("👍")
     if not is_connected(ctx):
         await ctx.author.voice.channel.connect()
-        if not play_if_not_playing.is_running():
-            play_if_not_playing.start(ctx)
     if not is_playing(ctx):
         await play_audio(ctx)
 
