@@ -216,7 +216,6 @@ async def play_audio(ctx):
         await ctx.author.voice.channel.connect()
 
     while is_connected(ctx):
-        print("Looping", time.time())
         if is_playing(ctx):
             print("Already playing, returning (in loop)")
             return
