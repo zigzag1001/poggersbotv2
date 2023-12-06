@@ -216,6 +216,7 @@ async def play_audio(ctx):
         await ctx.author.voice.channel.connect()
 
     while is_connected(ctx):
+        print("Looping", time.time())
         if is_playing(ctx):
             print("Already playing, returning (in loop)")
             return
@@ -523,7 +524,7 @@ async def play(ctx, *, search: str = None):
             .split("\n")
         )
         add_to_playlist(ctx, arr=ytplaylist, url="")
-    if not is_playing(ctx):
+    if not is_connected(ctx):
         await play_audio(ctx)
 
 
@@ -677,7 +678,7 @@ async def shuffle(ctx, ytpurl=None):
     await msg.edit(content="Shuffled...\n(Loading titles for queue)")
     await queue(ctx)
     await msg.delete()
-    if not is_playing(ctx) and ytpurl is not None:
+    if not is_connected(ctx) and ytpurl is not None:
         await play_audio(ctx)
 
 
@@ -727,7 +728,7 @@ async def pause(ctx):
     mydb.commit()
     mydb.close()
     await ctx.message.add_reaction("👍")
-    if not is_playing(ctx):
+    if not is_connected(ctx):
         await play_audio(ctx)
 
 
@@ -745,7 +746,6 @@ async def join(ctx):
     await ctx.message.add_reaction("👍")
     if not is_connected(ctx):
         await ctx.author.voice.channel.connect()
-    if not is_playing(ctx):
         await play_audio(ctx)
 
 
