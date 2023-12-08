@@ -108,6 +108,7 @@ def is_looping(ctx):
 
 # Adds to playlist database, but with my id method
 def add_to_playlist(ctx, url="", arr=[]):
+    # either url or arr, convert to arr
     if url == "" and arr == []:
         print("No url provided")
         return
@@ -115,6 +116,7 @@ def add_to_playlist(ctx, url="", arr=[]):
         arr.append(url)
     elif arr != [] and url != "":
         arr.insert(0, url)
+
     mydb = sqlite3.connect(db_name)
     mycursor = mydb.cursor()
     mycursor.execute(
@@ -122,11 +124,13 @@ def add_to_playlist(ctx, url="", arr=[]):
         (ctx.guild.id,),
     )
     id = mycursor.fetchone()
+
     if id is None:
         id = 1
     else:
         id = id[0] + 1
 
+    # fills in database with id, guild, url
     arr = [(id + i, ctx.guild.id, x) for i, x in enumerate(arr)]
 
     mycursor.executemany(
@@ -138,6 +142,7 @@ def add_to_playlist(ctx, url="", arr=[]):
 
 
 # Gets yt data, if not cached, gets from yt and caches
+# returns a dict of url: (name, duration)
 def get_yt_data(urls_list):
     if len(urls_list) == 0:
         return {}
@@ -152,6 +157,8 @@ def get_yt_data(urls_list):
         urls_list,
     )
     result = mycursor.fetchall()
+
+    # puts cached data into dict for future reference
     resultsdict = {}
     if result is not None:
         for x in result:
@@ -164,12 +171,15 @@ def get_yt_data(urls_list):
         if url in resultsdict:
             urls_list_data[url] = resultsdict[url]
         else:
+            # html extraction
             response = urllib.request.urlopen(url)
             html = response.read().decode()
             name = (
                 re.search(r"<title>(.*?)</title>", html).group(1).split(" - YouTube")[0]
             )
             duration = re.search(r'"lengthSeconds":"(.*?)"', html)
+
+            # duration calculation
             if duration is None:
                 duration = 0
             else:
@@ -183,6 +193,8 @@ def get_yt_data(urls_list):
                 mins = str(int(duration) // 60)
                 secs = f"{int(duration) % 60 : 03d}"
             duration_minsec = f"{mins}:{secs.strip()}"
+
+            # add to database
             try:
                 mycursor.execute(
                     "INSERT INTO yt_data (url, name, duration) VALUES (?, ?, ?)",
@@ -200,10 +212,9 @@ def get_yt_data(urls_list):
 # Also checks for bot control actions from db
 async def play_audio(ctx):
     if is_playing(ctx):
-        print("Already playing, returning")
+        print("Already playing, returning")  # debug
         return
-    playlist = []
-    five_times = 0
+    five_times = 0  # For checking if bot is inactive 5*120 = 10 minutes
     mydb = sqlite3.connect(db_name)
     mycursor = mydb.cursor()
     mycursor.execute(
@@ -217,8 +228,10 @@ async def play_audio(ctx):
 
     while is_connected(ctx):
         if is_playing(ctx):
-            print("Already playing, returning (in loop)")
+            print("Already playing, returning (in loop)")  # debug
             return
+
+        # Checks if bot is inactive and if songs have been added in web
         if playlist == [] and is_connected(ctx):
             five_times += 1
             if five_times == 120:
@@ -233,31 +246,36 @@ async def play_audio(ctx):
             )
             playlist = [x[0] for x in mycursor]
             mydb.close()
+            # if playlist is still empty, skip entire loop and wait 5 seconds
             if playlist == []:
                 await asyncio.sleep(5)
                 continue
-        five_times = 0
+        five_times = 0  # reset inactive counter if playing song
 
+        # if bot is moved to another voice channel, update vars
         voice_client = ctx.message.guild.voice_client
         voice_channel = ctx.message.guild.voice_client.channel
 
         url = playlist.pop(0)
 
         try:
-            time1 = time.time()  # For debugging
+            time1 = time.time()  # debug
 
+            # gets url of audio stream
             info = ytdl.extract_info(url, download=False)
             for format in info["formats"]:
                 if format["format_id"] == "251":
                     pureurl = format["url"]
                     break
 
-            print(f"Url retrieve time taken: {time.time() - time1}")  # For debugging
+            print(f"Url retrieve time taken: {time.time() - time1}")  # debug
 
             source = discord.FFmpegPCMAudio(pureurl, **ffmpeg_opts)
             source.read()
             voice_client.play(source)
             print(f"Playing {url}")
+
+            # main audio loop, also checks for bot control actions
             while voice_client.is_playing():
                 mydb = sqlite3.connect(db_name)
                 mycursor = mydb.cursor()
@@ -273,6 +291,7 @@ async def play_audio(ctx):
                 if action is not None:
                     mydb = sqlite3.connect(db_name)
                     mycursor = mydb.cursor()
+                    # skpis by stopping current audio, loop goes on to next song
                     if action[0] == "skip":
                         print("Skipping...")
                         voice_client.stop()
@@ -282,6 +301,7 @@ async def play_audio(ctx):
                         )
                         mydb.commit()
                         mydb.close()
+                    # pause by pausing audio, loop waits for same action to resume
                     elif action[0] == "playpause":
                         mycursor.execute(
                             "DELETE FROM bot_control WHERE guild = ? AND action = ?",
@@ -324,7 +344,6 @@ async def play_audio(ctx):
             )
             mydb.commit()
 
-        playlist = []
         mycursor.execute(
             "SELECT url FROM playlist WHERE guild = ? ORDER BY id", (ctx.guild.id,)
         )
@@ -354,10 +373,11 @@ async def on_voice_state_update(member, before, after):
     bot_voice_channel = member.guild.voice_client
     if bot_voice_channel is None:
         return
+    # stop if bot is alone in voice channel
     if bot_voice_channel.channel.members == [bot.user]:
         await stop(None, member.guild)
         return
-    # if bot is disconnected from voice channel
+    # stop if bot is force disconnected from voice channel
     if member == bot.user and member not in bot_voice_channel.channel.members:
         print("Bot disconnected")
         await stop(None, member.guild)
