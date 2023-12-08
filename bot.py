@@ -400,8 +400,14 @@ async def play(ctx, *, search: str = None):
             await ctx.message.add_reaction("➕")
             msgtext = "Adding playlist to queue...\n"
             await msg.edit(content=msgtext + "(yt-dlp query)")
+            # TODO: make seperate function since same thing used in three places
+            if "&list=" in search:
+                plistid = search.split("&list=")[1][:34]
+            elif "playlist?list=" in search:
+                plistid = search.split("playlist?list=")[1][:34]
+            plisturl = f"https://www.youtube.com/playlist?list={plistid}"
             ytplaylist = (
-                str(os.popen(f"yt-dlp {search} --flat-playlist --get-url").read())
+                str(os.popen(f"yt-dlp {plisturl} --flat-playlist --get-url").read())
                 .strip()
                 .split("\n")
             )
@@ -515,7 +521,11 @@ async def play(ctx, *, search: str = None):
     await ctx.message.add_reaction("👍")
     mydb.close()
     if vidplist is True:
-        plistid = yturl.split("&list=")[1]
+        # TODO: make seperate function since same thing used in three places
+        if "&list=" in yturl:
+            plistid = yturl.split("&list=")[1][:34]
+        elif "playlist?list=" in yturl:
+            plistid = yturl.split("playlist?list=")[1][:34]
         plisturl = f"https://www.youtube.com/playlist?list={plistid}"
         ytplaylist = (
             str(os.popen(f"yt-dlp {plisturl} --flat-playlist --get-url").read())
@@ -639,8 +649,14 @@ async def shuffle(ctx, ytpurl=None):
     if ytpurl is not None:
         await ctx.message.add_reaction("➕")
         await msg.edit(content="Adding playlist to queue...\n(yt-dlp query)")
+        # TODO: make seperate function since same thing used in three places
+        if "&list=" in ytpurl:
+            plistid = ytpurl.split("&list=")[1][:34]
+        elif "playlist?list=" in ytpurl:
+            plistid = ytpurl.split("playlist?list=")[1][:34]
+        plisturl = f"https://www.youtube.com/playlist?list={plistid}"
         ytplaylist = (
-            str(os.popen(f"yt-dlp {ytpurl} --flat-playlist --get-url").read())
+            str(os.popen(f"yt-dlp {plisturl} --flat-playlist --get-url").read())
             .strip()
             .split("\n")
         )

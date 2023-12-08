@@ -318,8 +318,13 @@ def add_song():
     if re.match(final_regex, search):
         if "playlist?list=" in search:
             is_playlist = True
+            if "&list=" in search:
+                plistid = search.split("&list=")[1][:34]
+            elif "playlist?list=" in search:
+                plistid = search.split("playlist?list=")[1][:34]
+            plisturl = f"https://www.youtube.com/playlist?list={plistid}"
             ytplaylist = (
-                str(os.popen(f"yt-dlp {search} --flat-playlist --get-url").read())
+                str(os.popen(f"yt-dlp {plisturl} --flat-playlist --get-url").read())
                 .strip()
                 .split("\n")
             )
