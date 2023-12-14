@@ -385,6 +385,9 @@ async def on_voice_state_update(member, before, after):
 
 
 # Commands
+
+# handles search and url adding to queue
+# start play_audio if not already playing
 @bot.command(
     name="play",
     help="Adds a song to queue, can be url or search term",
@@ -421,6 +424,7 @@ async def play(ctx, *, search: str = None):
             msgtext = "Adding playlist to queue...\n"
             await msg.edit(content=msgtext + "(yt-dlp query)")
             # TODO: make seperate function since same thing used in three places
+            # cleans playlist url, just in case
             if "&list=" in search:
                 plistid = search.split("&list=")[1][:34]
             elif "playlist?list=" in search:
@@ -441,6 +445,7 @@ async def play(ctx, *, search: str = None):
         elif "youtu" in search:
             yturl = search
             name = get_yt_data([yturl])[yturl][0]
+            # video urls can have a playlist attached, so check for that
             if "&list=" in yturl:
                 plistmsg = await ctx.send("Do you want to add the playlist to queue?")
                 await plistmsg.add_reaction("✅")
@@ -485,6 +490,7 @@ async def play(ctx, *, search: str = None):
                 await last_message.add_reaction("👍")
                 await smsg.delete()
                 break
+            # check reactions for 1-5, set resultnum
             reacts = get(bot.cached_messages, id=smsg.id).reactions
             for x in range(6):
                 if reacts[x].count > 1:
@@ -494,6 +500,7 @@ async def play(ctx, *, search: str = None):
             if resultnum != -1:
                 break
             await asyncio.sleep(1)
+        # if no input from user, set resultnum to default 0
         if resultnum == -1:
             await smsg.delete()
             resultnum = 0
@@ -504,6 +511,8 @@ async def play(ctx, *, search: str = None):
         name = info["search_result"][resultnum]["title"]
 
     await msg.edit(content=f"Added {name} to queue")
+
+    # if playlist is too long, ask if user wants to add to top of queue
     mydb = sqlite3.connect(db_name)
     mycursor = mydb.cursor()
     mycursor.execute(
@@ -511,6 +520,7 @@ async def play(ctx, *, search: str = None):
     )
     result = mycursor.fetchall()
     addnext = False
+
     if len(result) > 9 and plist is False:
         qmsg = await ctx.send(
             "Queue is over 10 songs, do you want to place this song at the top of the queue?"
@@ -608,7 +618,7 @@ async def queue(ctx, num: int = 10):
     if not is_user_connected(ctx):
         await ctx.send("You are not connected to a voice channel")
         return
-    time1 = time.time()  # For debugging
+    time1 = time.time()  # debug
     await ctx.message.add_reaction("👍")
     playlist = []
     mydb = sqlite3.connect(db_name)
@@ -623,6 +633,8 @@ async def queue(ctx, num: int = 10):
         await ctx.send("The queue is empty")
         return
     extra = ""
+    if num > len(playlist):
+        num = len(playlist)
     if len(playlist) > num:
         todisplay = num
         extra = f"\n {' '*10} + {len(playlist) - num} more, {len(playlist)} total"
@@ -634,7 +646,7 @@ async def queue(ctx, num: int = 10):
         title = yt_data[playlist[x]][0]
         duration_minsec = yt_data[playlist[x]][1]
         msgtext += f"{x+1}. {title} -- {duration_minsec}\n"
-    print(f"Queue time taken: {time.time() - time1}")  # For debugging
+    print(f"Queue time taken: {time.time() - time1}")  # debug
     fullmsg = msgtext + extra
     # Discord has a 2000 character limit, so if the queue is longer than that, split it into parts
     if len(fullmsg) >= 2000:
@@ -645,7 +657,7 @@ async def queue(ctx, num: int = 10):
             partmsg += f"{x+1}. {title} -- {duration_minsec}\n"
             if len(partmsg) >= 1900:
                 await ctx.send(partmsg + "```")
-                partmsg = ""
+                partmsg = "```markdown\n"
         await ctx.send(partmsg + extra + "```")
     else:
         await ctx.send(fullmsg + "```")
@@ -665,7 +677,7 @@ async def shuffle(ctx, ytpurl=None):
         "SELECT url FROM playlist WHERE guild = ? ORDER BY id LIMIT 1", (ctx.guild.id,)
     )
     currenturl = mycursor.fetchone()
-    # If a playlist url is provided, shuffle and add to queue
+    # If a playlist url is provided add to queue then shuffle
     if ytpurl is not None:
         await ctx.message.add_reaction("➕")
         await msg.edit(content="Adding playlist to queue...\n(yt-dlp query)")
