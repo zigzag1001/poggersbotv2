@@ -687,7 +687,7 @@ async def shuffle(ctx, ytpurl=None):
         mycursor.execute(
             f"UPDATE playlist SET id = {ids[i]} WHERE url = '{urls[i]}' AND guild = {ctx.guild.id}"
         )
-        mydb.commit()
+    mydb.commit()
     mydb.close()
     await ctx.message.add_reaction("👍")
     await msg.edit(content="Shuffled...\n(Loading titles for queue)")

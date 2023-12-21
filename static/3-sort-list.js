@@ -181,6 +181,7 @@ function fetchData() {
                             "Content-Type": "application/json",
                         },
                         body: updatedListJSON,
+                        guild: guild,
                     });
                     const data = await response.json();
                     console.log(data);
