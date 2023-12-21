@@ -14,6 +14,7 @@ load_dotenv()
 
 db_name = "db/bot.db"
 
+
 def add_to_playlist(url, guild, addnext):
     mydb = sqlite3.connect(db_name)
     mycursor = mydb.cursor()
@@ -76,14 +77,18 @@ def get_yt_data(urls_list):
         else:
             response = urllib.request.urlopen(url)
             html = response.read().decode()
-            name = re.search(r"<title>(.*?)</title>", html).group(1).split(" - YouTube")[0]
+            name = (
+                re.search(r"<title>(.*?)</title>", html).group(1).split(" - YouTube")[0]
+            )
             duration = re.search(r'"lengthSeconds":"(.*?)"', html)
             if duration is None:
                 duration = 0
             else:
                 duration = duration.group(1)
             if int(duration) >= 3600:
-                mins = str(int(duration) // 3600) + ":" + str(int(duration) % 3600 // 60)
+                mins = (
+                    str(int(duration) // 3600) + ":" + str(int(duration) % 3600 // 60)
+                )
                 secs = f"{int(duration) % 3600 % 60 : 03d}"
             else:
                 mins = str(int(duration) // 60)
@@ -101,12 +106,21 @@ def get_yt_data(urls_list):
     mydb.close()
     return urls_list_data
 
+
 def rainbowprint(msg) -> None:
-    colors = ["\033[1;31m", "\033[1;32m", "\033[1;33m", "\033[1;34m", "\033[1;35m", "\033[1;36m"]
+    colors = [
+        "\033[1;31m",  # red
+        "\033[1;32m",  # green
+        "\033[1;33m",  # yellow
+        "\033[1;34m",  # blue
+        "\033[1;35m",  # magenta
+        "\033[1;36m",  # cyan
+    ]
     reset = "\033[0;0m"
     for i in range(len(msg)):
         print(colors[i % len(colors)] + msg[i], end="")
     print(reset)
+
 
 def randescape(num):
     pychars = ["'", '"', "\\", "\n", "\t", "\b", "\r", "\f", "\v", "\a"]
@@ -121,12 +135,13 @@ def randescape(num):
             restr += chr(random.randint(select_range[0], select_range[1]))
     return restr
 
+
 def randpeople(num):
     fake = Faker()
-    
+
     data = {}
     for i in range(num):
-        user = fake.simple_profile() # username, name, sex, address, mail, birthdate
+        user = fake.simple_profile()  # username, name, sex, address, mail, birthdate
         user["ssn"] = fake.ssn()
         user["phone"] = fake.phone_number()
         user["credit_card"] = {
@@ -134,7 +149,7 @@ def randpeople(num):
             "card_provider": fake.credit_card_provider(),
             "card_security": fake.credit_card_security_code(),
             "card_expire": fake.credit_card_expire(),
-            }
+        }
         randattr = random.choice(list(user.keys()))
         user[randattr] = randescape(50)
         randattrremove = random.choice(list(user.keys()))
@@ -149,17 +164,20 @@ def page_not_found(e):
     rainbowprint("===WRONG REQUEST===")
     return randescape(1000)
 
+
 @app.errorhandler(400)
 def bad_request(e):
     rainbowprint("===WRONG REQUEST===")
     return randescape(2500000)
 
+
 @app.before_request
 def check_guild_parameter():
     if not request.path.startswith("/static"):
-        if 'guild' not in request.args and request.method != "POST":
+        if "guild" not in request.args and request.method != "POST":
             rainbowprint("===WRONG REQUEST===")
-            return randpeople(7000)
+            return randpeople(5000)
+
 
 @app.route("/")
 def display_data():
@@ -298,7 +316,9 @@ def shuffle():
     currenturl = urls.pop(0)
     random.shuffle(ids)
     for i in range(len(ids)):
-        cursor.execute(f"UPDATE playlist SET id = {ids[i]} WHERE url = '{urls[i]}' AND guild = {guild}")
+        cursor.execute(
+            f"UPDATE playlist SET id = {ids[i]} WHERE url = '{urls[i]}' AND guild = {guild}"
+        )
         mydb.commit()
     mydb.close()
     return jsonify({"success": True})
@@ -399,8 +419,21 @@ def add_song():
         info = eval(info)
         results = []
         for x in range(5):
-            results.append({'url': info["search_result"][x]["link"], 'title': info["search_result"][x]["title"], 'duration': info["search_result"][x]["duration"]})
-    return jsonify({"success": True, "results": results, "is_playlist": is_playlist, "is_url": is_url})
+            results.append(
+                {
+                    "url": info["search_result"][x]["link"],
+                    "title": info["search_result"][x]["title"],
+                    "duration": info["search_result"][x]["duration"],
+                }
+            )
+    return jsonify(
+        {
+            "success": True,
+            "results": results,
+            "is_playlist": is_playlist,
+            "is_url": is_url,
+        }
+    )
 
 
 port = int(os.getenv("PORT"))
