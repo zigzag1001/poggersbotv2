@@ -172,18 +172,41 @@ def get_yt_data(urls_list):
             urls_list_data[url] = resultsdict[url]
         else:
             # html extraction
-            response = urllib.request.urlopen(url)
-            html = response.read().decode()
-            name = (
-                re.search(r"<title>(.*?)</title>", html).group(1).split(" - YouTube")[0]
-            )
-            duration = re.search(r'"lengthSeconds":"(.*?)"', html)
+            try:
+                response = urllib.request.urlopen(url)
+                html = response.read().decode()
+            except urllib.error.HTTPError:
+                print("HTTPError", url)
+            if "youtu.be" in url or "youtube.com" in url:
+                name = (
+                    re.search(r"<title>(.*?)</title>", html).group(1).split(" - YouTube")[0]
+                )
+                duration = re.search(r'"lengthSeconds":"(.*?)"', html).group(1)
+            elif "soundcloud.com" in url:
+                time1 = time.time()  # debug
+                if "api-v2" in url:
+                    print("api-v2")
+                    data = os.popen(f"yt-dlp {url} --get-title --get-duration").read().strip().split("\n")
+                    name = data[0]
+                    duration = data[1]
+                    min = int(duration.split(":")[0])
+                    sec = int(duration.split(":")[1])
+                    duration = str(min * 60 + sec)
+                else:
+                    print("not api-v2")
+                    name = re.search(r'<meta property="og:title" content="(.*?)">', html).group(1)
+                    try:
+                        duration = re.search(r'<span aria-hidden="true">(\d+):(\d+)</span>', html)
+                        mins = int(duration.group(1))
+                        secs = int(duration.group(2))
+                        duration = str(mins * 60 + secs)
+                    except AttributeError:
+                        duration = None
+                print(f"Soundcloud name duration time taken: {time.time() - time1}")  # debug
 
             # duration calculation
             if duration is None:
                 duration = 0
-            else:
-                duration = duration.group(1)
             if int(duration) >= 3600:
                 mins = (
                     str(int(duration) // 3600) + ":" + str(int(duration) % 3600 // 60)
@@ -206,6 +229,81 @@ def get_yt_data(urls_list):
             urls_list_data[url] = (name, duration_minsec)
     mydb.close()
     return urls_list_data
+
+
+async def add_url(ctx, url, msg=None):
+    search = url
+    plist = False
+    vidplist = False
+    yturl = ""
+    name = ""
+    if "youtu.be" in search or "youtube.com" in search:
+        if "playlist?list=" in search:
+            plist = True
+            await ctx.message.add_reaction("➕")
+            msgtext = "Adding playlist to queue...\n"
+            await msg.edit(content=msgtext + "(yt-dlp query)")
+            # TODO: make seperate function since same thing used in three places
+            # cleans playlist url, just in case
+            plistid = search.split("playlist?list=")[1][:34]
+            plisturl = f"https://www.youtube.com/playlist?list={plistid}"
+            ytplaylist = (
+                str(os.popen(f"yt-dlp {plisturl} --flat-playlist --get-url").read())
+                .strip()
+                .split("\n")
+            )
+            await msg.edit(
+                content=f"Added {len(ytplaylist)} songs to queue...\n(Adding to playlist database)"
+            )
+            yturl = ytplaylist[0]
+            name = "playlist"
+            add_to_playlist(ctx, arr=ytplaylist, url="")
+        # If search is a video url
+        else:
+            yturl = search
+            name = get_yt_data([yturl])[yturl][0]
+            # video urls can have a playlist attached, so check for that
+            if "&list=" in yturl:
+                plistmsg = await ctx.send("Do you want to add the playlist to queue?")
+                await plistmsg.add_reaction("✅")
+                await plistmsg.add_reaction("❌")
+                for i in range(5):
+                    reacts = get(bot.cached_messages, id=plistmsg.id).reactions
+                    if reacts[0].count > 1:
+                        plist = True
+                        vidplist = True
+                        break
+                    elif reacts[1].count > 1:
+                        await plistmsg.delete()
+                        break
+                    await asyncio.sleep(1)
+        await msg.edit(content="Added to queue...")
+    elif "soundcloud.com" in search:
+        search = search.split("?")[0]
+        if "sets/" in search:
+            plist = True
+            await ctx.message.add_reaction("➕")
+            msgtext = "Adding playlist to queue...\n"
+            await msg.edit(content=msgtext + "(yt-dlp query)")
+            scplaylist = (
+                    str(os.popen(f"yt-dlp {search} --flat-playlist --get-url").read())
+                    .strip()
+                    .split("\n")
+            )
+            await msg.edit(
+                    content=f"Added {len(scplaylist)} songs to queue...\n(Adding to playlist database)"
+            )
+            yturl = scplaylist[0]
+            name = "playlist"
+            add_to_playlist(ctx, arr=scplaylist, url="")
+        else:
+            yturl = search
+            name = get_yt_data([yturl])[yturl][0]
+    else:
+        await ctx.send("url not supported yet, only youtube for now")
+        return [None, None, None, None]
+    return [plist, vidplist, yturl, name]
+
 
 
 # Actually traverses the queue and plays audio
@@ -264,7 +362,7 @@ async def play_audio(ctx):
             # gets url of audio stream
             info = ytdl.extract_info(url, download=False)
             for format in info["formats"]:
-                if format["format_id"] == "251":
+                if format["format_id"] == "251" or format["format_id"] == "http_mp3_128":
                     pureurl = format["url"]
                     break
 
@@ -414,56 +512,15 @@ async def play(ctx, *, search: str = None):
 
     msg = await ctx.send("Adding to queue...")
     final_regex = re.compile(f"{protocol}({domain}{path}|{subdomain}|{ip_domain})")
-    plist = False
     vidplist = False
+    plist = False
     # If search is a url
     if re.match(final_regex, search):
-        # If search is a playlist url
-        if "playlist?list=" in search:
-            plist = True
-            await ctx.message.add_reaction("➕")
-            msgtext = "Adding playlist to queue...\n"
-            await msg.edit(content=msgtext + "(yt-dlp query)")
-            # TODO: make seperate function since same thing used in three places
-            # cleans playlist url, just in case
-            if "&list=" in search:
-                plistid = search.split("&list=")[1][:34]
-            elif "playlist?list=" in search:
-                plistid = search.split("playlist?list=")[1][:34]
-            plisturl = f"https://www.youtube.com/playlist?list={plistid}"
-            ytplaylist = (
-                str(os.popen(f"yt-dlp {plisturl} --flat-playlist --get-url").read())
-                .strip()
-                .split("\n")
-            )
-            await msg.edit(
-                content=f"Added {len(ytplaylist)} songs to queue...\n(Adding to playlist database)"
-            )
-            yturl = ytplaylist[0]
-            name = "playlist"
-            add_to_playlist(ctx, arr=ytplaylist, url="")
-        # If search is a video url
-        elif "youtu" in search:
-            yturl = search
-            name = get_yt_data([yturl])[yturl][0]
-            # video urls can have a playlist attached, so check for that
-            if "&list=" in yturl:
-                plistmsg = await ctx.send("Do you want to add the playlist to queue?")
-                await plistmsg.add_reaction("✅")
-                await plistmsg.add_reaction("❌")
-                for i in range(5):
-                    reacts = get(bot.cached_messages, id=plistmsg.id).reactions
-                    if reacts[0].count > 1:
-                        plist = True
-                        vidplist = True
-                        break
-                    elif reacts[1].count > 1:
-                        await plistmsg.delete()
-                        break
-                    await asyncio.sleep(1)
-        else:
-            ctx.send("url not supported yet, only youtube for now")
-        await msg.edit(content="Added to queue...")
+        url_data = await add_url(ctx, search, msg)
+        plist = url_data[0]  # whether or not url is a playlist
+        vidplist = url_data[1]  # whether or not url is a video with a playlist attached
+        yturl = url_data[2]  # url of video
+        name = url_data[3]  # name of video
     # If search is a search term
     else:
         await ctx.message.add_reaction("🔎")
@@ -594,20 +651,32 @@ async def clear(ctx):
         return
     mydb = sqlite3.connect(db_name)
     mycursor = mydb.cursor()
+    mycursor.execute("SELECT url FROM playlist WHERE guild = ? ORDER BY id LIMIT 1", (ctx.guild.id,))
+    firsturl = mycursor.fetchone()
     mycursor.execute("DELETE FROM playlist WHERE guild = ?", (ctx.guild.id,))
     mydb.commit()
     mydb.close()
+    add_to_playlist(ctx, url=firsturl[0], arr=[])
     await ctx.message.add_reaction("👍")
 
 
 @bot.command(name="skip", help="Skips current song", aliases=["next", "s"])
-async def skip(ctx):
+async def skip(ctx, num: int = 1):
     if not is_user_connected(ctx):
         await ctx.send("You are not connected to a voice channel")
         return
     if not is_connected(ctx):
         await ctx.send("I am not connected to a voice channel")
         return
+    if num < 1:
+        await ctx.send("Number must be greater than 0")
+        return
+    elif num > 1:
+        mydb = sqlite3.connect(db_name)
+        mycursor = mydb.cursor()
+        mycursor.execute("DELETE FROM playlist WHERE guild = ? ORDER BY id LIMIT ?", (ctx.guild.id, num-1))
+        mydb.commit()
+        mydb.close()
     voice_client = ctx.message.guild.voice_client
     # skips by stopping current audio, play_audio will handle the rest
     voice_client.stop()
@@ -664,6 +733,32 @@ async def queue(ctx, num: int = 10):
         await ctx.send(fullmsg + "```")
 
 
+@bot.command(name="nowplaying", help="Shows the currently playing song", aliases=["np", "now"])
+async def nowplaying(ctx):
+    if not is_user_connected(ctx):
+        await ctx.send("You are not connected to a voice channel")
+        return
+    if not is_connected(ctx):
+        await ctx.send("I am not connected to a voice channel")
+        return
+    voice_client = ctx.message.guild.voice_client
+    if not voice_client.is_playing():
+        await ctx.send("Nothing is playing")
+        return
+    mydb = sqlite3.connect(db_name)
+    mycursor = mydb.cursor()
+    mycursor.execute(
+        "SELECT url FROM playlist WHERE guild = ? ORDER BY id LIMIT 1",
+        (ctx.guild.id,),
+    )
+    url = mycursor.fetchone()[0]
+    mydb.close()
+    yt_data = get_yt_data([url])
+    title = yt_data[url][0]
+    duration_minsec = yt_data[url][1]
+    await ctx.send(f"Now playing:\n```markdown\n{title} -- {duration_minsec}```")
+
+
 @bot.command(
     name="shuffle", help="Shuffles the queue or provided playlist", aliases=["sh"]
 )
@@ -682,12 +777,14 @@ async def shuffle(ctx, ytpurl=None):
     if ytpurl is not None:
         await ctx.message.add_reaction("➕")
         await msg.edit(content="Adding playlist to queue...\n(yt-dlp query)")
-        # TODO: make seperate function since same thing used in three places
-        if "&list=" in ytpurl:
-            plistid = ytpurl.split("&list=")[1][:34]
-        elif "playlist?list=" in ytpurl:
-            plistid = ytpurl.split("playlist?list=")[1][:34]
-        plisturl = f"https://www.youtube.com/playlist?list={plistid}"
+        plisturl = ytpurl
+        if "youtu.be" in ytpurl or "youtube.com" in ytpurl:
+            # TODO: make seperate function since same thing used in three places
+            if "&list=" in ytpurl:
+                plistid = ytpurl.split("&list=")[1][:34]
+            elif "playlist?list=" in ytpurl:
+                plistid = ytpurl.split("playlist?list=")[1][:34]
+            plisturl = f"https://www.youtube.com/playlist?list={plistid}"
         ytplaylist = (
             str(os.popen(f"yt-dlp {plisturl} --flat-playlist --get-url").read())
             .strip()
