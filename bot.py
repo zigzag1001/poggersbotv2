@@ -512,6 +512,8 @@ async def play(ctx, *, search: str = None):
 
     msg = await ctx.send("Adding to queue...")
     final_regex = re.compile(f"{protocol}({domain}{path}|{subdomain}|{ip_domain})")
+    vidplist = False
+    plist = False
     # If search is a url
     if re.match(final_regex, search):
         url_data = await add_url(ctx, search, msg)
