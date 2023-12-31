@@ -279,6 +279,7 @@ async def add_url(ctx, url, msg=None):
                     await asyncio.sleep(1)
         await msg.edit(content="Added to queue...")
     elif "soundcloud.com" in search:
+        search = search.split("?")[0]
         if "sets/" in search:
             plist = True
             await ctx.message.add_reaction("➕")
@@ -648,20 +649,32 @@ async def clear(ctx):
         return
     mydb = sqlite3.connect(db_name)
     mycursor = mydb.cursor()
+    mycursor.execute("SELECT url FROM playlist WHERE guild = ? ORDER BY id LIMIT 1", (ctx.guild.id,))
+    firsturl = mycursor.fetchone()
     mycursor.execute("DELETE FROM playlist WHERE guild = ?", (ctx.guild.id,))
     mydb.commit()
     mydb.close()
+    add_to_playlist(ctx, url=firsturl[0], arr=[])
     await ctx.message.add_reaction("👍")
 
 
 @bot.command(name="skip", help="Skips current song", aliases=["next", "s"])
-async def skip(ctx):
+async def skip(ctx, num: int = 1):
     if not is_user_connected(ctx):
         await ctx.send("You are not connected to a voice channel")
         return
     if not is_connected(ctx):
         await ctx.send("I am not connected to a voice channel")
         return
+    if num < 1:
+        await ctx.send("Number must be greater than 0")
+        return
+    elif num > 1:
+        mydb = sqlite3.connect(db_name)
+        mycursor = mydb.cursor()
+        mycursor.execute("DELETE FROM playlist WHERE guild = ? ORDER BY id LIMIT ?", (ctx.guild.id, num-1))
+        mydb.commit()
+        mydb.close()
     voice_client = ctx.message.guild.voice_client
     # skips by stopping current audio, play_audio will handle the rest
     voice_client.stop()
@@ -718,6 +731,32 @@ async def queue(ctx, num: int = 10):
         await ctx.send(fullmsg + "```")
 
 
+@bot.command(name="nowplaying", help="Shows the currently playing song", aliases=["np", "now"])
+async def nowplaying(ctx):
+    if not is_user_connected(ctx):
+        await ctx.send("You are not connected to a voice channel")
+        return
+    if not is_connected(ctx):
+        await ctx.send("I am not connected to a voice channel")
+        return
+    voice_client = ctx.message.guild.voice_client
+    if not voice_client.is_playing():
+        await ctx.send("Nothing is playing")
+        return
+    mydb = sqlite3.connect(db_name)
+    mycursor = mydb.cursor()
+    mycursor.execute(
+        "SELECT url FROM playlist WHERE guild = ? ORDER BY id LIMIT 1",
+        (ctx.guild.id,),
+    )
+    url = mycursor.fetchone()[0]
+    mydb.close()
+    yt_data = get_yt_data([url])
+    title = yt_data[url][0]
+    duration_minsec = yt_data[url][1]
+    await ctx.send(f"Now playing:\n```markdown\n{title} -- {duration_minsec}```")
+
+
 @bot.command(
     name="shuffle", help="Shuffles the queue or provided playlist", aliases=["sh"]
 )
@@ -736,12 +775,14 @@ async def shuffle(ctx, ytpurl=None):
     if ytpurl is not None:
         await ctx.message.add_reaction("➕")
         await msg.edit(content="Adding playlist to queue...\n(yt-dlp query)")
-        # TODO: make seperate function since same thing used in three places
-        if "&list=" in ytpurl:
-            plistid = ytpurl.split("&list=")[1][:34]
-        elif "playlist?list=" in ytpurl:
-            plistid = ytpurl.split("playlist?list=")[1][:34]
-        plisturl = f"https://www.youtube.com/playlist?list={plistid}"
+        plisturl = ytpurl
+        if "youtu.be" in ytpurl or "youtube.com" in ytpurl:
+            # TODO: make seperate function since same thing used in three places
+            if "&list=" in ytpurl:
+                plistid = ytpurl.split("&list=")[1][:34]
+            elif "playlist?list=" in ytpurl:
+                plistid = ytpurl.split("playlist?list=")[1][:34]
+            plisturl = f"https://www.youtube.com/playlist?list={plistid}"
         ytplaylist = (
             str(os.popen(f"yt-dlp {plisturl} --flat-playlist --get-url").read())
             .strip()

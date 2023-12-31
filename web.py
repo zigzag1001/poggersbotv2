@@ -75,16 +75,37 @@ def get_yt_data(urls_list):
         if url in resultsdict:
             urls_list_data[url] = resultsdict[url]
         else:
-            response = urllib.request.urlopen(url)
-            html = response.read().decode()
-            name = (
-                re.search(r"<title>(.*?)</title>", html).group(1).split(" - YouTube")[0]
-            )
-            duration = re.search(r'"lengthSeconds":"(.*?)"', html)
+            try:
+                response = urllib.request.urlopen(url)
+                html = response.read().decode()
+            except urllib.error.HTTPError:
+                print("HTTPError", url)
+            if "youtu.be" in url or "youtube.com" in url:
+                name = (
+                    re.search(r"<title>(.*?)</title>", html).group(1).split(" - YouTube")[0]
+                )
+                duration = re.search(r'"lengthSeconds":"(.*?)"', html).group(1)
+            elif "soundcloud.com" in url:
+                if "api-v2" in url:
+                    data = os.popen(f"yt-dlp {url} --get-title --get-duration").read().strip().split("\n")
+                    name = data[0]
+                    duration = data[1]
+                    min = int(duration.split(":")[0])
+                    sec = int(duration.split(":")[1])
+                    duration = str(min * 60 + sec)
+                else:
+                    name = re.search(r'<meta property="og:title" content="(.*?)">', html).group(1)
+                    try:
+                        duration = re.search(r'<span aria-hidden="true">(\d+):(\d+)</span>', html)
+                        mins = int(duration.group(1))
+                        secs = int(duration.group(2))
+                        duration = str(mins * 60 + secs)
+                    except AttributeError:
+                        duration = None
+
+            # duration calculation
             if duration is None:
                 duration = 0
-            else:
-                duration = duration.group(1)
             if int(duration) >= 3600:
                 mins = (
                     str(int(duration) // 3600) + ":" + str(int(duration) % 3600 // 60)
@@ -94,6 +115,7 @@ def get_yt_data(urls_list):
                 mins = str(int(duration) // 60)
                 secs = f"{int(duration) % 60 : 03d}"
             duration_minsec = f"{mins}:{secs.strip()}"
+
             try:
                 mycursor.execute(
                     "INSERT INTO yt_data (url, name, duration) VALUES (?, ?, ?)",
@@ -201,10 +223,16 @@ def get_data():
     for x in result[:toshow]:
         name = playlist_ytdata[x[1]][0]
         duration = playlist_ytdata[x[1]][1]
-        try:
-            thumbnail = f'https://img.youtube.com/vi/{x[1].split("=")[1]}/mqdefault.jpg'
-        except IndexError:
-            thumbnail = f'https://img.youtube.com/vi/{x[1].split("/")[3]}/mqdefault.jpg'
+        if "youtu.be" in x[1] or "youtube.com" in x[1]:
+            try:
+                thumbnail = f'https://img.youtube.com/vi/{x[1].split("=")[1]}/mqdefault.jpg'
+            except IndexError:
+                thumbnail = f'https://img.youtube.com/vi/{x[1].split("/")[3]}/mqdefault.jpg'
+        elif "soundcloud.com" in x[1]:
+            # too slow
+            # thumbnail = os.popen(f"yt-dlp {x[1]} --get-thumbnail").read().strip()
+            thumbnail = "https://i.imgur.com/8z2e0iM.png"
+            thumbnail = "https://edm.com/.image/ar_1:1%2Cc_fill%2Ccs_srgb%2Cq_auto:good%2Cw_1200/MTcyMzYzNDExMzE5OTU3MjQx/soundcloud.png"
         playlist.append(
             {
                 "id": x[0],
@@ -396,13 +424,15 @@ def add_song():
 
     final_regex = re.compile(f"{protocol}({domain}{path}|{subdomain}|{ip_domain})")
     if re.match(final_regex, search):
-        if "playlist?list=" in search:
+        if "playlist?list=" in search or "/sets/" in search.split("?")[0]:
             is_playlist = True
-            if "&list=" in search:
-                plistid = search.split("&list=")[1][:34]
-            elif "playlist?list=" in search:
-                plistid = search.split("playlist?list=")[1][:34]
-            plisturl = f"https://www.youtube.com/playlist?list={plistid}"
+            plisturl = search
+            if "youtube.com" in search or "youtu.be" in search:
+                if "&list=" in search:
+                    plistid = search.split("&list=")[1][:34]
+                elif "playlist?list=" in search:
+                    plistid = search.split("playlist?list=")[1][:34]
+                plisturl = f"https://www.youtube.com/playlist?list={plistid}"
             ytplaylist = (
                 str(os.popen(f"yt-dlp {plisturl} --flat-playlist --get-url").read())
                 .strip()
