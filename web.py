@@ -84,7 +84,10 @@ def get_yt_data(urls_list):
                 name = (
                     re.search(r"<title>(.*?)</title>", html).group(1).split(" - YouTube")[0]
                 )
-                duration = re.search(r'"lengthSeconds":"(.*?)"', html).group(1)
+                try:
+                    duration = re.search(r'"lengthSeconds":"(.*?)"', html).group(1)
+                except AttributeError:
+                    duration = None
             elif "soundcloud.com" in url:
                 if "api-v2" in url:
                     data = os.popen(f"yt-dlp {url} --get-title --get-duration").read().strip().split("\n")
