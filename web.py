@@ -75,6 +75,8 @@ def get_yt_data(urls_list):
         if url in resultsdict:
             urls_list_data[url] = resultsdict[url]
         else:
+            name = None
+            duration = None
             try:
                 response = urllib.request.urlopen(url)
                 html = response.read().decode()
@@ -118,6 +120,9 @@ def get_yt_data(urls_list):
                 mins = str(int(duration) // 60)
                 secs = f"{int(duration) % 60 : 03d}"
             duration_minsec = f"{mins}:{secs.strip()}"
+
+            if name is None:
+                name = url
 
             try:
                 mycursor.execute(
@@ -443,9 +448,11 @@ def add_song():
             )
             for x in ytplaylist:
                 add_to_playlist(x, guild, addnext)
-        else:
+        elif "youtube.com" in search or "youtu.be" in search or "soundcloud.com" in search:
             is_url = True
             add_to_playlist(search, guild, addnext)
+        else:
+            return jsonify({"success": False, "error": "Invalid URL"})
     else:
         search = SearchVideos(search, offset=1, mode="json", max_results=5)
         info = search.result()

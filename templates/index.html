@@ -274,7 +274,17 @@
                     });
                     const data = await response.json();
                     console.log(data);
-                    if (data.is_playlist == false && data.is_url == false) {
+                    if (data.success == false) {
+                        const searchresults =
+                            document.getElementById("searchresults");
+                        slidingDiv.style.height = "60%";
+                        searchcontainer.style.height = "25%";
+                        searchresults.style.height = "75%";
+                        searchresults.style.opacity = "1";
+                        const li = document.createElement("li");
+                        li.innerHTML = data.error;
+                        searchresults.appendChild(li);
+                    } else if (data.is_playlist == false && data.is_url == false) {
                         const results = data.results;
                         const searchresults =
                             document.getElementById("searchresults");

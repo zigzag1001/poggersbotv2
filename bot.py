@@ -303,7 +303,7 @@ async def add_url(ctx, url, msg=None):
             yturl = search
             name = get_yt_data([yturl])[yturl][0]
     else:
-        await ctx.send("url not supported yet, only youtube for now")
+        await ctx.send("url not supported yet, only youtube, soundcloud for now")
         return [None, None, None, None]
     return [plist, vidplist, yturl, name]
 
@@ -520,6 +520,8 @@ async def play(ctx, *, search: str = None):
     # If search is a url
     if re.match(final_regex, search):
         url_data = await add_url(ctx, search, msg)
+        if url_data[0] is None:
+            return
         plist = url_data[0]  # whether or not url is a playlist
         vidplist = url_data[1]  # whether or not url is a video with a playlist attached
         yturl = url_data[2]  # url of video
