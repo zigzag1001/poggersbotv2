@@ -57,7 +57,7 @@ mycursor.execute(
 # bot control
 mycursor.execute("DROP TABLE IF EXISTS bot_control")
 mycursor.execute(
-    "CREATE TABLE IF NOT EXISTS bot_control (guild INTEGER, action TEXT, voice_channel INTEGER)"
+    "CREATE TABLE IF NOT EXISTS bot_control (guild INTEGER, action TEXT, extra TEXT, voice_channel INTEGER)"
 )
 
 # yt data
@@ -327,6 +327,10 @@ async def play_audio(ctx):
         await web(ctx, "Web interface: ")
         await ctx.author.voice.channel.connect()
 
+    moved = False
+    progresstime = 0
+    pureurl = ""
+
     while is_connected(ctx):
         if is_playing(ctx):
             print("Already playing, returning (in loop)")  # debug
@@ -363,29 +367,48 @@ async def play_audio(ctx):
             time1 = time.time()  # debug
 
             # gets url of audio stream
-            info = ytdl.extract_info(url, download=False)
-            for format in info["formats"]:
-                if format["format_id"] == "251" or format["format_id"] == "http_mp3_128":
-                    pureurl = format["url"]
-                    break
+            if not moved:
+                info = ytdl.extract_info(url, download=False)
+                for format in info["formats"]:
+                    if format["format_id"] == "251" or format["format_id"] == "http_mp3_128":
+                        pureurl = format["url"]
+                        break
 
             print(f"Url retrieve time taken: {time.time() - time1}")  # debug
 
-            source = discord.FFmpegPCMAudio(pureurl, **ffmpeg_opts)
+            if not moved:
+                audiostarttime = time.time()
+
+            if moved:
+                # continue playing audio where it left off
+                moved = False
+                resume_time = progresstime
+                print(f"Resuming at {resume_time}")
+                newffmpeg_opts = {
+                    "before_options": f"-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -ss {resume_time}",
+                    "options": "-vn",
+                }
+                source = discord.FFmpegPCMAudio(pureurl, **newffmpeg_opts)
+            else:
+                source = discord.FFmpegPCMAudio(pureurl, **ffmpeg_opts)
             source.read()
             voice_client.play(source)
             print(f"Playing {url}")
 
             # main audio loop, also checks for bot control actions
             while voice_client.is_playing():
+                progresstime = time.time() - audiostarttime
                 mydb = sqlite3.connect(db_name)
                 mycursor = mydb.cursor()
                 if voice_channel != ctx.message.guild.voice_client.channel:
                     print("Bot moved")
-                    voice_client.pause()
+                    moved = True
+                    voice_client.stop()
+                    continue
+                    #voice_client.pause()
                 # Checks for bot control actions
                 mycursor.execute(
-                    "SELECT action FROM bot_control WHERE guild = ?", (ctx.guild.id,)
+                    "SELECT action, extra FROM bot_control WHERE guild = ?", (ctx.guild.id,)
                 )
                 action = mycursor.fetchone()
                 mydb.close()
@@ -431,6 +454,20 @@ async def play_audio(ctx):
                                 paused = False
                         mydb.close()
                         voice_client.resume()
+                    elif action[0] == 'ss':
+                        mycursor.execute(
+                            "DELETE FROM bot_control WHERE guild = ? AND action = ?",
+                            (ctx.guild.id, "ss"),
+                        )
+                        mydb.commit()
+                        mydb.close()
+                        moved = True
+                        skip_time = int(action[1])
+                        if action[1] == None or action[1] == "":
+                            skip_time = 0
+                        progresstime = skip_time
+                        voice_client.stop()
+                        break
                 await asyncio.sleep(1)
             voice_client.stop()
         except Exception as e:
@@ -438,7 +475,7 @@ async def play_audio(ctx):
             await ctx.send("Error playing audio, skipping...")
         mydb = sqlite3.connect(db_name)
         mycursor = mydb.cursor()
-        if not is_looping(ctx):
+        if not is_looping(ctx) and not moved:
             mycursor.execute(
                 "DELETE FROM playlist WHERE url = ? AND guild = ? ORDER BY id LIMIT 1",
                 (url, ctx.guild.id),
@@ -625,6 +662,7 @@ async def play(ctx, *, search: str = None):
             .strip()
             .split("\n")
         )
+        ytplaylist.remove(yturl.split("&list=")[0])
         add_to_playlist(ctx, arr=ytplaylist, url="")
     if not is_connected(ctx):
         await play_audio(ctx)
@@ -898,5 +936,50 @@ async def join(ctx):
         await ctx.author.voice.channel.connect()
         await play_audio(ctx)
 
+
+@bot.command(name="ss", help="Skips to a certain time in the song", aliases=["skipsec", "skipseconds"])
+async def ss(ctx, time=None):
+    if not is_user_connected(ctx):
+        await ctx.send("You are not connected to a voice channel")
+        return
+    if not is_connected(ctx):
+        await ctx.send("I am not connected to a voice channel")
+        return
+    if not is_playing(ctx):
+        await ctx.send("Nothing is playing")
+        return
+    if time is None:
+        await ctx.send("Please provide a time to skip to")
+        return
+    try:
+        time = int(time)
+    except ValueError:
+        await ctx.send("Please provide a time in seconds")
+        return
+    mydb = sqlite3.connect(db_name)
+    mycursor = mydb.cursor()
+    mycursor.execute(
+        "INSERT INTO bot_control (guild, action, extra) VALUES (?, ?, ?)",
+        (ctx.guild.id, "ss", time),
+    )
+    mydb.commit()
+    mycursor.execute(
+        "SELECT url FROM playlist WHERE guild = ? ORDER BY id LIMIT 1", (ctx.guild.id,)
+    )
+    currenturl = mycursor.fetchone()
+    mycursor.execute(
+        "SELECT duration FROM yt_data WHERE url = ?", (currenturl[0],)
+    )
+    duration = mycursor.fetchone()[0]
+    mydb.close()
+    h = time // 3600
+    m = time % 3600 // 60
+    s = time % 3600 % 60
+    if h == 0:
+        time = f"{m}:{s:02d}"
+    else:
+        time = f"{h}:{m}:{s:02d}"
+    await ctx.send(f"{time} / {duration}")
+    await ctx.message.add_reaction("👍")
 
 bot.run(TOKEN)
