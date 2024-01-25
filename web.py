@@ -203,10 +203,11 @@ def bad_request(e):
 
 @app.before_request
 def check_guild_parameter():
-    if not request.path.startswith("/static"):
-        if "guild" not in request.args and request.method != "POST":
-            rainbowprint("===WRONG REQUEST===")
-            return randpeople(5000)
+    if request.path.startswith("/static"):
+        return
+    if "guild" not in request.args and request.method != "POST":
+        rainbowprint("===WRONG REQUEST===")
+        return randpeople(5000)
 
 
 @app.route("/")
