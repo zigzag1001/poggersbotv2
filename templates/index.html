@@ -117,7 +117,6 @@
                     });
 
                     const data = await response.json();
-                    console.log(data);
                     fetchData();
                 }, 300); // Adjust the delay as needed
             });
@@ -140,7 +139,6 @@
                     });
 
                     const data = await response.json();
-                    console.log(data);
                     fetchData();
                 }, 300); // Adjust the delay as needed
             });
@@ -172,7 +170,6 @@
                     });
 
                     const data = await response.json();
-                    console.log(data);
                     fetchData();
                 }, 300);
             });
@@ -195,7 +192,6 @@
                     });
 
                     const data = await response.json();
-                    console.log(data);
                     if (data.looping === true) {
                         document.getElementById("loop").style =
                             "background: #0b6122;";
@@ -277,8 +273,9 @@
                             guild: guild,
                         }),
                     });
+                    slidingDiv.style.height = "60%";
+                    searchcontainer.style.height = "25%";
                     const data = await response.json();
-                    console.log(data);
                     if (data.success == false) {
                         const searchresults =
                             document.getElementById("searchresults");
@@ -287,7 +284,7 @@
                         searchresults.style.height = "75%";
                         searchresults.style.opacity = "1";
                         const li = document.createElement("li");
-                        li.innerHTML = data.error;
+                        li.innerHTML = "Error adding song: " + data.error;
                         searchresults.appendChild(li);
                     } else if (data.is_playlist == false && data.is_url == false) {
                         const results = data.results;
@@ -352,7 +349,6 @@
                                         }),
                                     });
                                     const data = await response.json();
-                                    console.log(data);
                                     li.style = "background: #078528;";
                                     // slidesearch();
                                     fetchData();
@@ -360,7 +356,29 @@
                             });
                             searchresults.appendChild(li);
                         });
-                    }
+                    } else if (data.is_playlist == true) {
+                        const searchresults =
+                            document.getElementById("searchresults");
+                        slidingDiv.style.height = "60%";
+                        searchcontainer.style.height = "25%";
+                        searchresults.style.height = "75%";
+                        searchresults.style.opacity = "1";
+                        const li = document.createElement("li");
+                        li.style = "background: #078528;";
+                        li.innerHTML = "Playlist added!";
+                        searchresults.appendChild(li);
+                    } else {
+                        const searchresults =
+                            document.getElementById("searchresults");
+                        slidingDiv.style.height = "60%";
+                        searchcontainer.style.height = "25%";
+                        searchresults.style.height = "75%";
+                        searchresults.style.opacity = "1";
+                        const li = document.createElement("li");
+                        li.style = "background: #078528;";
+                        li.innerHTML = "Song added!";
+                        searchresults.appendChild(li);
+                    } 
                     fetchData();
                 }, 300);
             });

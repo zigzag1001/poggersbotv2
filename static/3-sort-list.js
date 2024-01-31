@@ -154,7 +154,6 @@ function fetchData() {
                         }),
                     });
                     const data = await response.json();
-                    console.log(data);
                     fetchData();
                 });
                 button3.addEventListener("click", async () => {
@@ -170,7 +169,6 @@ function fetchData() {
                         }),
                     });
                     const data = await response.json();
-                    console.log(data);
                     fetchData();
                 });
                 li.addEventListener("dragend", async () => {
@@ -184,7 +182,6 @@ function fetchData() {
                         guild: guild,
                     });
                     const data = await response.json();
-                    console.log(data);
                     fetchData();
                 });
             });

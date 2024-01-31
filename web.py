@@ -27,6 +27,19 @@ def add_to_playlist(url, guild, addnext):
         id = 1
     else:
         id = id[0] + 1
+    isarr = isinstance(url, list)
+
+    if isarr:
+        newarr = [(id + i, guild, x) for i, x in enumerate(url)]
+
+        mycursor.executemany(
+            "INSERT INTO playlist (id, guild, url) VALUES (?, ?, ?)", newarr
+        )
+
+        mydb.commit()
+        mydb.close()
+        return
+
     if addnext:
         mycursor.execute(
             "SELECT id FROM playlist WHERE guild = ? ORDER BY id LIMIT 1",
@@ -342,22 +355,28 @@ def shuffle():
     guild = int(data.get("guild"))
     mydb = sqlite3.connect(db_name)
     cursor = mydb.cursor()
-    cursor.execute(f"SELECT id, url FROM playlist WHERE guild = {guild} ORDER BY id")
+    cursor.execute(
+        f"SELECT url, id FROM playlist WHERE guild = {guild} ORDER BY id"
+    )
     result = cursor.fetchall()
-    ids = []
-    urls = []
-    for x in result:
-        ids.append(x[0])
-        urls.append(x[1])
-    currentid = ids.pop(0)
-    currenturl = urls.pop(0)
-    random.shuffle(ids)
-    for i in range(len(ids)):
-        cursor.execute(
-            f"UPDATE playlist SET id = {ids[i]} WHERE url = '{urls[i]}' AND guild = {guild}"
-        )
-        mydb.commit()
+
+    urls_list = [x[0] for x in result]
+
+    currentid = result[0][1]
+
+    del urls_list[0]
+
+    random.shuffle(urls_list)
+
+    cursor.execute(
+        "DELETE FROM playlist WHERE guild = ? AND id > ?", (guild, currentid)
+    )
+
+    mydb.commit()
     mydb.close()
+
+    add_to_playlist(urls_list, guild, False)
+
     return jsonify({"success": True})
 
 
@@ -447,19 +466,24 @@ def add_song():
                 .strip()
                 .split("\n")
             )
-            for x in ytplaylist:
-                add_to_playlist(x, guild, addnext)
+            add_to_playlist(ytplaylist, guild, addnext)
+            return jsonify({"success": True, "is_playlist": is_playlist, "is_url": is_url})
         elif "youtube.com" in search or "youtu.be" in search or "soundcloud.com" in search:
             is_url = True
             add_to_playlist(search, guild, addnext)
+            return jsonify({"success": True, "is_playlist": is_playlist, "is_url": is_url})
         else:
             return jsonify({"success": False, "error": "Invalid URL"})
     else:
         search = SearchVideos(search, offset=1, mode="json", max_results=5)
         info = search.result()
-        info = eval(info)
+        try:
+            info = eval(info)
+        except TypeError:
+            return jsonify({"success": False, "error": "No results found / search error"})
         results = []
-        for x in range(5):
+        num_results = 5 if len(info["search_result"]) > 5 else len(info["search_result"])
+        for x in range(len(info)):
             results.append(
                 {
                     "url": info["search_result"][x]["link"],

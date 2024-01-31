@@ -472,7 +472,10 @@ async def play_audio(ctx):
             voice_client.stop()
         except Exception as e:
             print(e)
-            await ctx.send("Error playing audio, skipping...")
+            e = str(e)
+            if len(e) > 2000:
+                e = e[:1900] + "(too long)..."
+            await ctx.send(f"Error playing {url}\n```\n{e}```")
         mydb = sqlite3.connect(db_name)
         mycursor = mydb.cursor()
         if not is_looping(ctx) and not moved:
@@ -554,9 +557,17 @@ async def play(ctx, *, search: str = None):
     final_regex = re.compile(f"{protocol}({domain}{path}|{subdomain}|{ip_domain})")
     vidplist = False
     plist = False
+
+    # cleans url, just in case
+    urlsearch = search.strip()
+    if "\n" in urlsearch:
+        urlsearch = search.split("\n")[0]
+    if " " in urlsearch:
+        urlsearch = search.split(" ")[0]
+
     # If search is a url
-    if re.match(final_regex, search):
-        url_data = await add_url(ctx, search, msg)
+    if re.match(final_regex, urlsearch):
+        url_data = await add_url(ctx, urlsearch, msg)
         if url_data[0] is None:
             return
         plist = url_data[0]  # whether or not url is a playlist
@@ -565,10 +576,17 @@ async def play(ctx, *, search: str = None):
         name = url_data[3]  # name of video
     # If search is a search term
     else:
+        if search in ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]:
+            await skip(ctx, int(search))
+            return
         await ctx.message.add_reaction("🔎")
         search = SearchVideos(search, offset=1, mode="json", max_results=5)
         info = search.result()
-        info = eval(info)
+        try:
+            info = eval(info)
+        except TypeError:
+            await ctx.send("No results found / search error")
+            return
         msgtext = ""
         resultnum = -1
         smsg = await ctx.send(content="Searching...")
@@ -734,13 +752,16 @@ async def queue(ctx, num: int = 10):
     time1 = time.time()  # debug
     await ctx.message.add_reaction("👍")
     playlist = []
+    ids = []
     mydb = sqlite3.connect(db_name)
     mycursor = mydb.cursor()
     mycursor.execute(
-        "SELECT url FROM playlist WHERE guild = ? ORDER BY id",
+        "SELECT url, id FROM playlist WHERE guild = ? ORDER BY id",
         (ctx.guild.id,),
     )
-    playlist = [x[0] for x in mycursor]
+    for x in mycursor:
+        playlist.append(x[0])
+        ids.append(x[1])
     mydb.close()
     if playlist == []:
         await ctx.send("The queue is empty")
@@ -755,10 +776,13 @@ async def queue(ctx, num: int = 10):
         todisplay = len(playlist)
     msgtext = "```markdown\n"  # markdown looks nicer than plain
     yt_data = get_yt_data(playlist[:todisplay])
-    for x in range(todisplay):
+    title = yt_data[playlist[0]][0]
+    duration_minsec = yt_data[playlist[0]][1]
+    msgtext += f"> {ids[0]}. {title} -- {duration_minsec}\n"
+    for x in range(1, todisplay):
         title = yt_data[playlist[x]][0]
         duration_minsec = yt_data[playlist[x]][1]
-        msgtext += f"{x+1}. {title} -- {duration_minsec}\n"
+        msgtext += f"       {x+1}. {title} -- {duration_minsec}\n"
     print(f"Queue time taken: {time.time() - time1}")  # debug
     fullmsg = msgtext + extra
     # Discord has a 2000 character limit, so if the queue is longer than that, split it into parts
@@ -784,22 +808,7 @@ async def nowplaying(ctx):
     if not is_connected(ctx):
         await ctx.send("I am not connected to a voice channel")
         return
-    voice_client = ctx.message.guild.voice_client
-    if not voice_client.is_playing():
-        await ctx.send("Nothing is playing")
-        return
-    mydb = sqlite3.connect(db_name)
-    mycursor = mydb.cursor()
-    mycursor.execute(
-        "SELECT url FROM playlist WHERE guild = ? ORDER BY id LIMIT 1",
-        (ctx.guild.id,),
-    )
-    url = mycursor.fetchone()[0]
-    mydb.close()
-    yt_data = get_yt_data([url])
-    title = yt_data[url][0]
-    duration_minsec = yt_data[url][1]
-    await ctx.send(f"Now playing:\n```markdown\n{title} -- {duration_minsec}```")
+    await queue(ctx, 2)
 
 
 @bot.command(
@@ -827,7 +836,13 @@ async def shuffle(ctx, ytpurl=None):
                 plistid = ytpurl.split("&list=")[1][:34]
             elif "playlist?list=" in ytpurl:
                 plistid = ytpurl.split("playlist?list=")[1][:34]
+            else:
+                await ctx.send("Not a playlist url")
+                return
             plisturl = f"https://www.youtube.com/playlist?list={plistid}"
+        elif "soundcloud.com" in ytpurl and "sets/" not in ytpurl:
+            await ctx.send("Not a playlist url")
+            return
         ytplaylist = (
             str(os.popen(f"yt-dlp {plisturl} --flat-playlist --get-url").read())
             .strip()
@@ -845,23 +860,27 @@ async def shuffle(ctx, ytpurl=None):
         await ctx.send("The queue is empty")
         return
     mycursor.execute(
-        f"SELECT id, url FROM playlist WHERE guild = {ctx.guild.id} ORDER BY id"
+        f"SELECT url, id FROM playlist WHERE guild = {ctx.guild.id} ORDER BY id"
     )
     result = mycursor.fetchall()
-    ids = []
-    urls = []
-    for x in result:
-        ids.append(x[0])
-        urls.append(x[1])
-    currentid = ids.pop(0)
-    currenturl = urls.pop(0)
-    random.shuffle(ids)
-    for i in range(len(ids)):
-        mycursor.execute(
-            f"UPDATE playlist SET id = {ids[i]} WHERE url = '{urls[i]}' AND guild = {ctx.guild.id}"
-        )
+
+    urls_list = [x[0] for x in result]
+
+    currentid = result[0][1]
+
+    del urls_list[0]
+
+    random.shuffle(urls_list)
+
+    mycursor.execute(
+        "DELETE FROM playlist WHERE guild = ? AND id > ?", (ctx.guild.id, currentid)
+    )
+
     mydb.commit()
     mydb.close()
+
+    add_to_playlist(ctx, arr=urls_list, url="")
+
     await ctx.message.add_reaction("👍")
     await msg.edit(content="Shuffled...\n(Loading titles for queue)")
     await queue(ctx)
