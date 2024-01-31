@@ -589,11 +589,12 @@ async def play(ctx, *, search: str = None):
             return
         msgtext = ""
         resultnum = -1
+        displaynum = 5 if len(info["search_result"]) >= 5 else len(info["search_result"])
         smsg = await ctx.send(content="Searching...")
-        for x in range(5):
+        for x in range(displaynum):
             msgtext += f'{x+1}. {info["search_result"][x]["title"]}\n'
         await smsg.edit(content=msgtext)
-        for x in range(5):
+        for x in range(displaynum):
             await smsg.add_reaction(f"{x+1}\N{combining enclosing keycap}")
         await smsg.add_reaction("❌")
         for i in range(10):
@@ -601,7 +602,7 @@ async def play(ctx, *, search: str = None):
             channel = ctx.channel
             last_message = await channel.fetch_message(channel.last_message_id)
             if (
-                last_message.content in ["1", "2", "3", "4", "5"]
+                last_message.content in ["1", "2", "3", "4", "5", "6"]
                 and last_message.author != bot.user
             ):
                 resultnum = int(last_message.content) - 1
@@ -610,7 +611,7 @@ async def play(ctx, *, search: str = None):
                 break
             # check reactions for 1-5, set resultnum
             reacts = get(bot.cached_messages, id=smsg.id).reactions
-            for x in range(6):
+            for x in range(displaynum+1):
                 if reacts[x].count > 1:
                     resultnum = x
                     await smsg.delete()
@@ -622,7 +623,7 @@ async def play(ctx, *, search: str = None):
         if resultnum == -1:
             await smsg.delete()
             resultnum = 0
-        if resultnum == 5:
+        if resultnum == displaynum:
             await msg.edit(content="Cancelled")
             return
         yturl = info["search_result"][resultnum]["link"]
@@ -646,23 +647,37 @@ async def play(ctx, *, search: str = None):
         await qmsg.add_reaction("✅")
         await qmsg.add_reaction("❌")
         for i in range(5):
+
+            # get next message, if its a number, set resultnum
+            channel = ctx.channel
+            last_message = await channel.fetch_message(channel.last_message_id)
+            if (last_message.content in ["1", "2"] and last_message.author != bot.user):
+                resultnum = int(last_message.content) - 1
+                break
+
+            # check reactions set resultnum
             reacts = get(bot.cached_messages, id=qmsg.id).reactions
             if reacts[0].count > 1:
-                addnext = True
-                secondid = result[1][0]
-                mycursor.execute(
-                    "UPDATE playlist SET id = id + 1 WHERE id >= ? AND guild = ?",
-                    (secondid, ctx.guild.id),
-                )
-                mycursor.execute(
-                    "INSERT INTO playlist (id, url, guild) VALUES (?, ?, ?)",
-                    (secondid, yturl, ctx.guild.id),
-                )
-                mydb.commit()
+                resultnum = 0
                 break
             elif reacts[1].count > 1:
+                resultnum = 1
                 break
             await asyncio.sleep(1)
+
+        if resultnum == 0:
+            addnext = True
+            secondid = result[1][0]
+            mycursor.execute(
+                    "UPDATE playlist SET id = id + 1 WHERE id >= ? AND guild = ?",
+                    (secondid, ctx.guild.id),
+                                )
+            mycursor.execute(
+                    "INSERT INTO playlist (id, url, guild) VALUES (?, ?, ?)",
+                    (secondid, yturl, ctx.guild.id),
+                                )
+            mydb.commit()
+
         await qmsg.delete()
     if addnext is False:
         add_to_playlist(ctx, url=yturl, arr=[])

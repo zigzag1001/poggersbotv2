@@ -55,10 +55,7 @@
                 <p class="pllength" id="pllength"></p>
             </div>
         </div>
-        <div
-            class="clickblocker"
-            id="clickblocker"
-        ></div>
+        <div class="clickblocker" id="clickblocker"></div>
         <div id="slidingDiv">
             <div class="addsong" id="addsong">
                 <div class="searchcontainer" id="searchcontainer">
@@ -260,8 +257,14 @@
                 }
 
                 debounceTimeout = setTimeout(async () => {
+                    const searchresults =
+                        document.getElementById("searchresults");
                     searchresults.style.opacity = "0";
                     searchresults.innerHTML = "";
+                    slidingDiv.style.height = "60%";
+                    searchcontainer.style.height = "25%";
+                    searchresults.style.height = "75%";
+                    searchresults.style.opacity = "1";
                     const response = await fetch("/add_song", {
                         method: "POST",
                         headers: {
@@ -273,8 +276,6 @@
                             guild: guild,
                         }),
                     });
-                    slidingDiv.style.height = "60%";
-                    searchcontainer.style.height = "25%";
                     const data = await response.json();
                     if (data.success == false) {
                         const searchresults =
@@ -286,7 +287,10 @@
                         const li = document.createElement("li");
                         li.innerHTML = "Error adding song: " + data.error;
                         searchresults.appendChild(li);
-                    } else if (data.is_playlist == false && data.is_url == false) {
+                    } else if (
+                        data.is_playlist == false &&
+                        data.is_url == false
+                    ) {
                         const results = data.results;
                         const searchresults =
                             document.getElementById("searchresults");
@@ -378,7 +382,7 @@
                         li.style = "background: #078528;";
                         li.innerHTML = "Song added!";
                         searchresults.appendChild(li);
-                    } 
+                    }
                     fetchData();
                 }, 300);
             });
