@@ -270,16 +270,12 @@ async def add_url(ctx, url, msg=None):
                 plistmsg = await ctx.send("Do you want to add the playlist to queue?")
                 await plistmsg.add_reaction("✅")
                 await plistmsg.add_reaction("❌")
-                for i in range(5):
-                    reacts = get(bot.cached_messages, id=plistmsg.id).reactions
-                    if reacts[0].count > 1:
-                        plist = True
-                        vidplist = True
-                        break
-                    elif reacts[1].count > 1:
-                        await plistmsg.delete()
-                        break
-                    await asyncio.sleep(1)
+                choices = ["✅", "❌"]
+
+                resultnum = await choose(ctx, choices, plistmsg, 10)
+                if resultnum == 0:
+                    plist = True
+                    vidplist = True
         await msg.edit(content="Added to queue...")
     elif "soundcloud.com" in search:
         search = search.split("?")[0]
@@ -627,7 +623,6 @@ async def play(ctx, *, search: str = None):
 
         # if no input from user, set resultnum to default 0
         if resultnum == -1:
-            await smsg.delete()
             resultnum = 0
         if resultnum == displaynum:
             await msg.edit(content="Cancelled")
@@ -650,28 +645,12 @@ async def play(ctx, *, search: str = None):
         qmsg = await ctx.send(
             "Queue is over 10 songs, do you want to place this song at the top of the queue?"
         )
-        await qmsg.add_reaction("✅")
-        await qmsg.add_reaction("❌")
-        for i in range(5):
 
-            # get next message, if its a number, set resultnum
-            channel = ctx.channel
-            last_message = await channel.fetch_message(channel.last_message_id)
-            if (last_message.content in ["1", "2"] and last_message.author != bot.user):
-                resultnum = int(last_message.content) - 1
-                break
+        choices = ["✅", "❌"]
 
-            # check reactions set resultnum
-            reacts = get(bot.cached_messages, id=qmsg.id).reactions
-            if reacts[0].count > 1:
-                resultnum = 0
-                break
-            elif reacts[1].count > 1:
-                resultnum = 1
-                break
-            await asyncio.sleep(1)
+        resultnum = await choose(ctx, choices, qmsg, 10)
 
-        if resultnum == 0:
+        if resultnum == 0 or resultnum == -1:
             addnext = True
             secondid = result[1][0]
             mycursor.execute(
@@ -684,7 +663,6 @@ async def play(ctx, *, search: str = None):
                                 )
             mydb.commit()
 
-        await qmsg.delete()
     if addnext is False:
         add_to_playlist(ctx, url=yturl, arr=[])
     await ctx.message.add_reaction("👍")
@@ -703,6 +681,7 @@ async def play(ctx, *, search: str = None):
         )
         ytplaylist.remove(yturl.split("&list=")[0])
         add_to_playlist(ctx, arr=ytplaylist, url="")
+        await ctx.send(f"Added {len(ytplaylist)} songs to queue...")
     if not is_connected(ctx):
         await play_audio(ctx)
 
@@ -994,7 +973,14 @@ async def ss(ctx, time=None):
     try:
         time = int(time)
     except ValueError:
-        await ctx.send("Please provide a time in seconds")
+        if time.endswith("s"):
+            time = time[:-1]
+        elif time.endswith("m"):
+            time = int(time[:-1]) * 60
+        elif time.endswith("h"):
+            time = int(time[:-1]) * 3600
+        else:
+            await ctx.send("Please provide a time n, ns, nm, or nh")
         return
     mydb = sqlite3.connect(db_name)
     mycursor = mydb.cursor()
