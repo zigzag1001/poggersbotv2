@@ -315,18 +315,22 @@ async def choose(ctx, choices, msg, time):
     for c in choices:
         await msg.add_reaction(c)
     for _ in range(time):
+        if result != -1:
+            break
 
         # type to choose
         last_message = await channel.fetch_message(channel.last_message_id)
         if (last_message.content in choices_nums and last_message.author != bot.user):
-            return int(last_message.content) - 1
+            result = int(last_message.content) - 1
 
         # check reactions
         reacts = get(bot.cached_messages, id=msg.id).reactions
         for x in range(len(choices)):
             if reacts[x].count > 1:
-                return x
+                result = x
+                break
         await asyncio.sleep(1)
+    await msg.delete()
     return result
 
 
@@ -631,7 +635,7 @@ async def play(ctx, *, search: str = None):
         yturl = info["search_result"][resultnum]["link"]
         name = info["search_result"][resultnum]["title"]
 
-    await msg.edit(content=f"Added {name} to queue")
+    await msg.edit(content=f"Added [{name}](<{yturl}>) to queue")
 
     # if playlist is too long, ask if user wants to add to top of queue
     mydb = sqlite3.connect(db_name)
