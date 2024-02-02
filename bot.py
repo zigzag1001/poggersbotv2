@@ -234,6 +234,71 @@ def get_yt_data(urls_list):
     return urls_list_data
 
 
+def clean_url(url):
+    if "\n" in url:
+        url = url.split("\n")[0]
+    if " " in url:
+        url = url.split(" ")[0]
+
+    
+    if "youtu.be" in url or "youtube.com" in url:
+        vidid = ""
+        plistid = ""
+        video = False
+
+        if "watch?v=" in url:
+            vidid = url.split("watch?v=")[1][:11]
+            video = True
+        if "list=" in url:
+            plistid = url.split("list=")[1][:34]
+
+        if vidid == "" and plistid == "":
+            return None
+
+        if video:
+            return f"https://youtube.com/watch?v={vidid}&list={plistid}"
+        else:
+            return f"https://youtube.com/playlist?list={plistid}"
+    elif "soundcloud.com" in url:
+        url = url.split("?")[0]
+        return url
+    else:
+        return None
+
+
+def isplaylist(url):
+    if "youtu.be" in url or "youtube.com" in url:
+        if "playlist?list=" in url:
+            return True
+    elif "soundcloud.com" in url:
+        if "sets/" in url:
+            return True
+    return False
+
+
+def get_arr_from_playlist(url):
+    if "youtu.be" in url or "youtube.com" in url:
+        if "playlist?list=" in url:
+            plistid = url.split("playlist?list=")[1][:34]
+            plisturl = f"https://www.youtube.com/playlist?list={plistid}"
+            ytplaylist = (
+                str(os.popen(f"yt-dlp {plisturl} --flat-playlist --get-url").read())
+                .strip()
+                .split("\n")
+            )
+            return ytplaylist
+    elif "soundcloud.com" in url:
+        url = url.split("?")[0]
+        if "sets/" in url:
+            scplaylist = (
+                str(os.popen(f"yt-dlp {url} --flat-playlist --get-url").read())
+                .strip()
+                .split("\n")
+            )
+        return scplaylist
+    return None
+
+
 async def add_url(ctx, url, msg=None):
     search = url
     plist = False
@@ -243,7 +308,6 @@ async def add_url(ctx, url, msg=None):
     if "youtu.be" in search or "youtube.com" in search:
         if "playlist?list=" in search:
             plist = True
-            await ctx.message.add_reaction("➕")
             msgtext = "Adding playlist to queue...\n"
             await msg.edit(content=msgtext + "(yt-dlp query)")
             # TODO: make seperate function since same thing used in three places
@@ -268,11 +332,11 @@ async def add_url(ctx, url, msg=None):
             # video urls can have a playlist attached, so check for that
             if "&list=" in yturl:
                 plistmsg = await ctx.send("Do you want to add the playlist to queue?")
-                await plistmsg.add_reaction("✅")
-                await plistmsg.add_reaction("❌")
+
                 choices = ["✅", "❌"]
 
                 resultnum = await choose(ctx, choices, plistmsg, 10)
+
                 if resultnum == 0:
                     plist = True
                     vidplist = True
@@ -972,7 +1036,6 @@ async def ss(ctx, time=None):
     if time is None:
         await ctx.send("Please provide a time to skip to")
         return
-    # ^([01]?[0-9]|2[0-3])h([0-5]?[0-9])m([0-5]?[0-9])s$'
 
     if re.match(r"^\d+:\d+$", time):
         time = time.split(":")
