@@ -305,6 +305,13 @@ async def add_url(ctx, url, msg=None):
     vidplist = False
     yturl = ""
     name = ""
+
+    url = clean_url(url)
+    if url is None:
+        await ctx.send("Invalid url")
+        return [None, None, None, None]
+
+    # old
     if "youtu.be" in search or "youtube.com" in search:
         if "playlist?list=" in search:
             plist = True
