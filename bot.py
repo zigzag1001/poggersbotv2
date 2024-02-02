@@ -308,6 +308,28 @@ async def add_url(ctx, url, msg=None):
     return [plist, vidplist, yturl, name]
 
 
+async def choose(ctx, choices, msg, time):
+    result = -1
+    channel = ctx.channel
+    choices_nums = [str(x) for x in range(1, len(choices) + 1)]
+    for c in choices:
+        await msg.add_reaction(c)
+    for _ in range(time):
+
+        # type to choose
+        last_message = await channel.fetch_message(channel.last_message_id)
+        if (last_message.content in choices_nums and last_message.author != bot.user):
+            return int(last_message.content) - 1
+
+        # check reactions
+        reacts = get(bot.cached_messages, id=msg.id).reactions
+        for x in range(len(choices)):
+            if reacts[x].count > 1:
+                return x
+        await asyncio.sleep(1)
+    return result
+
+
 
 # Actually traverses the queue and plays audio
 # Also checks for bot control actions from db
@@ -588,37 +610,17 @@ async def play(ctx, *, search: str = None):
             await ctx.send("No results found / search error")
             return
         msgtext = ""
-        resultnum = -1
         displaynum = 5 if len(info["search_result"]) >= 5 else len(info["search_result"])
         smsg = await ctx.send(content="Searching...")
         for x in range(displaynum):
             msgtext += f'{x+1}. {info["search_result"][x]["title"]}\n'
         await smsg.edit(content=msgtext)
-        for x in range(displaynum):
-            await smsg.add_reaction(f"{x+1}\N{combining enclosing keycap}")
-        await smsg.add_reaction("❌")
-        for i in range(10):
-            # get next message, if its a number 1-5, set resultnum
-            channel = ctx.channel
-            last_message = await channel.fetch_message(channel.last_message_id)
-            if (
-                last_message.content in ["1", "2", "3", "4", "5", "6"]
-                and last_message.author != bot.user
-            ):
-                resultnum = int(last_message.content) - 1
-                await last_message.add_reaction("👍")
-                await smsg.delete()
-                break
-            # check reactions for 1-5, set resultnum
-            reacts = get(bot.cached_messages, id=smsg.id).reactions
-            for x in range(displaynum+1):
-                if reacts[x].count > 1:
-                    resultnum = x
-                    await smsg.delete()
-                    break
-            if resultnum != -1:
-                break
-            await asyncio.sleep(1)
+
+        choices = [f"{x+1}\N{combining enclosing keycap}" for x in range(displaynum)]
+        choices.append("❌")
+
+        resultnum = await choose(ctx, choices, smsg, 10)
+
         # if no input from user, set resultnum to default 0
         if resultnum == -1:
             await smsg.delete()
