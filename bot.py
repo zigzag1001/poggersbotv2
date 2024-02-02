@@ -18,7 +18,7 @@ load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 
 intents = discord.Intents.all()
-bot = commands.Bot(command_prefix=["r; ", "r;"], intents=intents)
+bot = commands.Bot(command_prefix=["r; ", "r;", "R;", "R; "], intents=intents)
 
 # Configs
 
@@ -526,7 +526,7 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
-    if message.content.startswith("r;"):
+    if message.content.lower().startswith("r;"):
         await bot.process_commands(message)
 
 
@@ -599,6 +599,7 @@ async def play(ctx, *, search: str = None):
     # If search is a search term
     else:
         if search in ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]:
+            await msg.delete()
             await skip(ctx, int(search))
             return
         await ctx.message.add_reaction("🔎")
@@ -738,6 +739,7 @@ async def skip(ctx, num: int = 1):
         mycursor.execute("DELETE FROM playlist WHERE guild = ? ORDER BY id LIMIT ?", (ctx.guild.id, num-1))
         mydb.commit()
         mydb.close()
+        await ctx.send(f"Skipped to song +{num}")
     voice_client = ctx.message.guild.voice_client
     # skips by stopping current audio, play_audio will handle the rest
     voice_client.stop()
@@ -970,18 +972,38 @@ async def ss(ctx, time=None):
     if time is None:
         await ctx.send("Please provide a time to skip to")
         return
-    try:
+    # ^([01]?[0-9]|2[0-3])h([0-5]?[0-9])m([0-5]?[0-9])s$'
+
+    if re.match(r"^\d+:\d+$", time):
+        time = time.split(":")
+        time = int(time[0]) * 60 + int(time[1])
+    elif re.match(r"^\d+:\d+:\d+$", time):
+        time = time.split(":")
+        time = int(time[0]) * 3600 + int(time[1]) * 60 + int(time[2])
+    elif re.match(r"^\d+$", time):
         time = int(time)
-    except ValueError:
-        if time.endswith("s"):
-            time = time[:-1]
-        elif time.endswith("m"):
-            time = int(time[:-1]) * 60
-        elif time.endswith("h"):
-            time = int(time[:-1]) * 3600
-        else:
-            await ctx.send("Please provide a time n, ns, nm, or nh")
+    elif re.match(r"^\d+h\d+m\d+s$", time):
+        time = time.split("h")
+        h = int(time[0])
+        time = time[1].split("m")
+        m = int(time[0])
+        time = time[1].split("s")
+        s = int(time[0])
+        time = h * 3600 + m * 60 + s
+    elif re.match(r"^\d+m\d+s$", time):
+        time = time.split("m")
+        m = int(time[0])
+        time = time[1].split("s")
+        s = int(time[0])
+        time = m * 60 + s
+    elif re.match(r"^\d+s$", time):
+        time = int(time[:-1])
+    elif re.match(r"^\d+m$", time):
+        time = int(time[:-1]) * 60
+    else:
+        await ctx.send("Invalid time format")
         return
+
     mydb = sqlite3.connect(db_name)
     mycursor = mydb.cursor()
     mycursor.execute(
