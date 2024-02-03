@@ -329,7 +329,6 @@ async def add_url(ctx, url, msg=None):
             resultnum = await choose(ctx, choices, plistmsg, 10)
 
             if resultnum == 0:
-                plist = True
                 vidplist = True
             else:
                 url = url.split("&list=")[0]

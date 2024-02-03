@@ -483,7 +483,7 @@ def add_song():
             return jsonify({"success": False, "error": "No results found / search error"})
         results = []
         num_results = 5 if len(info["search_result"]) > 5 else len(info["search_result"])
-        for x in range(len(info)):
+        for x in range(len(info["search_result"])):
             results.append(
                 {
                     "url": info["search_result"][x]["link"],
