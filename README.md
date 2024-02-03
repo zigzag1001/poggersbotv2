@@ -7,7 +7,7 @@
 ---
 
 
-#### Features
+## Features
 
 - Play music from YouTube
 - Search query or URL
@@ -16,11 +16,15 @@
 - Simple web interface
 - Edit queue (i.e. drag songs) from web interface
 
-#### Preview
+#### Preview Web
 ![general_webui_example](https://github.com/zigzag1001/poggersbotv2/assets/72932714/39e4dfaa-100c-4414-8fad-2a50c23b233f)
-![addsong_webui_example](https://github.com/zigzag1001/poggersbotv2/assets/72932714/58113ee9-5364-4743-b901-c1ae19349b46)
+#### Preview Web Features
+![poggersbotv2_web](https://github.com/zigzag1001/poggersbotv2/assets/72932714/1a3b6d16-5d64-4923-8436-04675253d59e)
+#### Preview Basic Text Commands
+![poggersbotv2_text](https://github.com/zigzag1001/poggersbotv2/assets/72932714/30d46901-2adc-4df6-b970-7129b044b09d)
 
-#### Installation
+
+## Installation
 
 1. Install docker
 2. Clone this repository
