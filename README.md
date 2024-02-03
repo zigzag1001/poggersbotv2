@@ -19,9 +19,10 @@
 #### Preview Web
 ![general_webui_example](https://github.com/zigzag1001/poggersbotv2/assets/72932714/39e4dfaa-100c-4414-8fad-2a50c23b233f)
 #### Preview Web Features
-![poggersbotv2_web](https://github.com/zigzag1001/poggersbotv2/assets/72932714/1a3b6d16-5d64-4923-8436-04675253d59e)
+https://github.com/zigzag1001/poggersbotv2/assets/72932714/f2c2eafc-ca2a-4b77-ba74-9c934166fcdd
 #### Preview Basic Text Commands
-![poggersbotv2_text](https://github.com/zigzag1001/poggersbotv2/assets/72932714/30d46901-2adc-4df6-b970-7129b044b09d)
+https://github.com/zigzag1001/poggersbotv2/assets/72932714/d5932a3c-98de-4eeb-8efe-ddf18b155c48
+
 
 
 ## Installation
