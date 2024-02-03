@@ -18,7 +18,7 @@ load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 
 intents = discord.Intents.all()
-bot = commands.Bot(command_prefix=["r; ", "r;"], intents=intents)
+bot = commands.Bot(command_prefix=["r; ", "r;", "R;", "R; "], intents=intents)
 
 # Configs
 
@@ -234,74 +234,108 @@ def get_yt_data(urls_list):
     return urls_list_data
 
 
-async def add_url(ctx, url, msg=None):
-    search = url
-    plist = False
-    vidplist = False
-    yturl = ""
-    name = ""
-    if "youtu.be" in search or "youtube.com" in search:
-        if "playlist?list=" in search:
-            plist = True
-            await ctx.message.add_reaction("➕")
-            msgtext = "Adding playlist to queue...\n"
-            await msg.edit(content=msgtext + "(yt-dlp query)")
-            # TODO: make seperate function since same thing used in three places
-            # cleans playlist url, just in case
-            plistid = search.split("playlist?list=")[1][:34]
+def clean_url(url):
+    if "\n" in url:
+        url = url.split("\n")[0]
+    if " " in url:
+        url = url.split(" ")[0]
+
+    
+    if "youtu.be" in url or "youtube.com" in url:
+        vidid = ""
+        plistid = ""
+        video = False
+
+        if "watch?v=" in url:
+            vidid = url.split("watch?v=")[1][:11]
+            video = True
+        if "list=" in url:
+            plistid = url.split("list=")[1][:34]
+
+        if vidid == "" and plistid == "":
+            return None
+
+        if video:
+            return f"https://youtube.com/watch?v={vidid}" + (f"&list={plistid}" if plistid != "" else "")
+        else:
+            return f"https://youtube.com/playlist?list={plistid}"
+    elif "soundcloud.com" in url:
+        url = url.split("?")[0]
+        return url
+    else:
+        return None
+
+
+def isplaylist(url):
+    if "youtu.be" in url or "youtube.com" in url:
+        if "playlist?list=" in url:
+            return True
+    elif "soundcloud.com" in url:
+        if "sets/" in url:
+            return True
+    return False
+
+
+def get_arr_from_playlist(url):
+    if "youtu.be" in url or "youtube.com" in url:
+        if "playlist?list=" in url:
+            plistid = url.split("playlist?list=")[1][:34]
             plisturl = f"https://www.youtube.com/playlist?list={plistid}"
             ytplaylist = (
                 str(os.popen(f"yt-dlp {plisturl} --flat-playlist --get-url").read())
                 .strip()
                 .split("\n")
             )
-            await msg.edit(
-                content=f"Added {len(ytplaylist)} songs to queue...\n(Adding to playlist database)"
-            )
-            yturl = ytplaylist[0]
-            name = "playlist"
-            add_to_playlist(ctx, arr=ytplaylist, url="")
-        # If search is a video url
-        else:
-            yturl = search
-            name = get_yt_data([yturl])[yturl][0]
-            # video urls can have a playlist attached, so check for that
-            if "&list=" in yturl:
-                plistmsg = await ctx.send("Do you want to add the playlist to queue?")
-                await plistmsg.add_reaction("✅")
-                await plistmsg.add_reaction("❌")
-                choices = ["✅", "❌"]
-
-                resultnum = await choose(ctx, choices, plistmsg, 10)
-                if resultnum == 0:
-                    plist = True
-                    vidplist = True
-        await msg.edit(content="Added to queue...")
-    elif "soundcloud.com" in search:
-        search = search.split("?")[0]
-        if "sets/" in search:
-            plist = True
-            await ctx.message.add_reaction("➕")
-            msgtext = "Adding playlist to queue...\n"
-            await msg.edit(content=msgtext + "(yt-dlp query)")
+            return ytplaylist
+    elif "soundcloud.com" in url:
+        url = url.split("?")[0]
+        if "sets/" in url:
             scplaylist = (
-                    str(os.popen(f"yt-dlp {search} --flat-playlist --get-url").read())
-                    .strip()
-                    .split("\n")
+                str(os.popen(f"yt-dlp {url} --flat-playlist --get-url").read())
+                .strip()
+                .split("\n")
             )
-            await msg.edit(
-                    content=f"Added {len(scplaylist)} songs to queue...\n(Adding to playlist database)"
-            )
-            yturl = scplaylist[0]
-            name = "playlist"
-            add_to_playlist(ctx, arr=scplaylist, url="")
-        else:
-            yturl = search
-            name = get_yt_data([yturl])[yturl][0]
-    else:
-        await ctx.send("url not supported yet, only youtube, soundcloud for now")
+        return scplaylist
+    return None
+
+
+async def add_url(ctx, url, msg=None):
+    plist = False
+    vidplist = False
+    name = ""
+
+    # new clean_url isplaylist get_arr_from_playlist
+    url = clean_url(url)
+    if url is None:
+        await ctx.send("Invalid url")
         return [None, None, None, None]
-    return [plist, vidplist, yturl, name]
+
+    if isplaylist(url):
+        plist = True
+        msgtext = "Adding playlist to queue...\n"
+        await msg.edit(content=msgtext + "(yt-dlp query)")
+        arr = get_arr_from_playlist(url)
+        await msg.edit(
+            content=f"Added {len(arr)} songs to queue...\n(Adding to playlist database)"
+        )
+        add_to_playlist(ctx, arr=arr, url="")
+        name = f"{len(arr)} songs"
+        return [plist, vidplist, url, name]
+    else:
+        if "&list=" in url:
+            plistmsg = await ctx.send("Do you want to add the playlist to queue?")
+
+            choices = ["✅", "❌"]
+            resultnum = await choose(ctx, choices, plistmsg, 10)
+
+            if resultnum == 0:
+                plist = True
+                vidplist = True
+            else:
+                url = url.split("&list=")[0]
+        add_to_playlist(ctx, url=url, arr=[])
+        name = get_yt_data([url])[url][0]
+        return [plist, vidplist, url, name]
 
 
 async def choose(ctx, choices, msg, time):
@@ -318,6 +352,8 @@ async def choose(ctx, choices, msg, time):
         last_message = await channel.fetch_message(channel.last_message_id)
         if (last_message.content in choices_nums and last_message.author != bot.user):
             result = int(last_message.content) - 1
+            await last_message.add_reaction("👍")
+            continue
 
         # check reactions
         reacts = get(bot.cached_messages, id=msg.id).reactions
@@ -328,7 +364,6 @@ async def choose(ctx, choices, msg, time):
         await asyncio.sleep(1)
     await msg.delete()
     return result
-
 
 
 # Actually traverses the queue and plays audio
@@ -526,7 +561,7 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
-    if message.content.startswith("r;"):
+    if message.content.lower().startswith("r;"):
         await bot.process_commands(message)
 
 
@@ -559,6 +594,10 @@ async def on_voice_state_update(member, before, after):
 )
 async def play(ctx, *, search: str = None):
     ytplaylist = []
+    playnext = False
+    if search.endswith("-pn!"): # janky but cant add arguments to play command
+        search = search[:-4]
+        playnext = True
     if not is_user_connected(ctx):
         await ctx.send("You are not connected to a voice channel")
         return
@@ -599,6 +638,7 @@ async def play(ctx, *, search: str = None):
     # If search is a search term
     else:
         if search in ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]:
+            await msg.delete()
             await skip(ctx, int(search))
             return
         await ctx.message.add_reaction("🔎")
@@ -629,8 +669,8 @@ async def play(ctx, *, search: str = None):
             return
         yturl = info["search_result"][resultnum]["link"]
         name = info["search_result"][resultnum]["title"]
+        add_to_playlist(ctx, url=yturl, arr=[])
 
-    await msg.edit(content=f"Added [{name}](<{yturl}>) to queue")
 
     # if playlist is too long, ask if user wants to add to top of queue
     mydb = sqlite3.connect(db_name)
@@ -639,9 +679,10 @@ async def play(ctx, *, search: str = None):
         "SELECT id, url FROM playlist WHERE guild = ? ORDER BY id", (ctx.guild.id,)
     )
     result = mycursor.fetchall()
-    addnext = False
 
-    if len(result) > 9 and plist is False:
+    resultnum = 1
+
+    if len(result) > 9 and plist is False and playnext is False:
         qmsg = await ctx.send(
             "Queue is over 10 songs, do you want to place this song at the top of the queue?"
         )
@@ -650,37 +691,39 @@ async def play(ctx, *, search: str = None):
 
         resultnum = await choose(ctx, choices, qmsg, 10)
 
-        if resultnum == 0 or resultnum == -1:
-            addnext = True
-            secondid = result[1][0]
-            mycursor.execute(
-                    "UPDATE playlist SET id = id + 1 WHERE id >= ? AND guild = ?",
-                    (secondid, ctx.guild.id),
-                                )
-            mycursor.execute(
-                    "INSERT INTO playlist (id, url, guild) VALUES (?, ?, ?)",
-                    (secondid, yturl, ctx.guild.id),
-                                )
-            mydb.commit()
+    if (resultnum == 0 or resultnum == -1 or playnext) and plist is False:
+        secondid = result[1][0]
+        lastid = result[-1][0]
+        mycursor.execute(
+                "UPDATE playlist SET id = id + 1 WHERE id >= ? AND guild = ?",
+                (secondid, ctx.guild.id),
+                            )
+        mydb.commit()
+        mycursor.execute(
+                "UPDATE playlist SET id = ? WHERE guild = ? AND id = ?",
+                (secondid, ctx.guild.id, lastid + 1),
+                            )
+        mydb.commit()
 
-    if addnext is False:
-        add_to_playlist(ctx, url=yturl, arr=[])
+    await msg.edit(content=f"Added [{name}](<{yturl}>) to queue")
+
     await ctx.message.add_reaction("👍")
     mydb.close()
     if vidplist is True:
-        # TODO: make seperate function since same thing used in three places
         if "&list=" in yturl:
             plistid = yturl.split("&list=")[1][:34]
-        elif "playlist?list=" in yturl:
-            plistid = yturl.split("playlist?list=")[1][:34]
+        else:
+            return
+
         plisturl = f"https://www.youtube.com/playlist?list={plistid}"
-        ytplaylist = (
-            str(os.popen(f"yt-dlp {plisturl} --flat-playlist --get-url").read())
-            .strip()
-            .split("\n")
-        )
-        ytplaylist.remove(yturl.split("&list=")[0])
+        ytplaylist = get_arr_from_playlist(plisturl)
+
+        currentid = yturl.split("?v=")[1][:11]
+        currenturl = f"https://www.youtube.com/watch?v={currentid}"
+        ytplaylist.remove(currenturl)
+
         add_to_playlist(ctx, arr=ytplaylist, url="")
+
         await ctx.send(f"Added {len(ytplaylist)} songs to queue...")
     if not is_connected(ctx):
         await play_audio(ctx)
@@ -738,6 +781,7 @@ async def skip(ctx, num: int = 1):
         mycursor.execute("DELETE FROM playlist WHERE guild = ? ORDER BY id LIMIT ?", (ctx.guild.id, num-1))
         mydb.commit()
         mydb.close()
+        await ctx.send(f"Skipped to song +{num}")
     voice_client = ctx.message.guild.voice_client
     # skips by stopping current audio, play_audio will handle the rest
     voice_client.stop()
@@ -970,18 +1014,37 @@ async def ss(ctx, time=None):
     if time is None:
         await ctx.send("Please provide a time to skip to")
         return
-    try:
+
+    if re.match(r"^\d+:\d+$", time):
+        time = time.split(":")
+        time = int(time[0]) * 60 + int(time[1])
+    elif re.match(r"^\d+:\d+:\d+$", time):
+        time = time.split(":")
+        time = int(time[0]) * 3600 + int(time[1]) * 60 + int(time[2])
+    elif re.match(r"^\d+$", time):
         time = int(time)
-    except ValueError:
-        if time.endswith("s"):
-            time = time[:-1]
-        elif time.endswith("m"):
-            time = int(time[:-1]) * 60
-        elif time.endswith("h"):
-            time = int(time[:-1]) * 3600
-        else:
-            await ctx.send("Please provide a time n, ns, nm, or nh")
+    elif re.match(r"^\d+h\d+m\d+s$", time):
+        time = time.split("h")
+        h = int(time[0])
+        time = time[1].split("m")
+        m = int(time[0])
+        time = time[1].split("s")
+        s = int(time[0])
+        time = h * 3600 + m * 60 + s
+    elif re.match(r"^\d+m\d+s$", time):
+        time = time.split("m")
+        m = int(time[0])
+        time = time[1].split("s")
+        s = int(time[0])
+        time = m * 60 + s
+    elif re.match(r"^\d+s$", time):
+        time = int(time[:-1])
+    elif re.match(r"^\d+m$", time):
+        time = int(time[:-1]) * 60
+    else:
+        await ctx.send("Invalid time format")
         return
+
     mydb = sqlite3.connect(db_name)
     mycursor = mydb.cursor()
     mycursor.execute(
@@ -1007,5 +1070,11 @@ async def ss(ctx, time=None):
         time = f"{h}:{m}:{s:02d}"
     await ctx.send(f"{time} / {duration}")
     await ctx.message.add_reaction("👍")
+
+
+@bot.command(name="pn", help="Just like play, but places song next", aliases=["playnext", "pnext"])
+async def pn(ctx, *, search: str = None):
+    search = search + "-pn!"  # janky but cant add arguments to play command
+    await play(ctx, search=search)
 
 bot.run(TOKEN)
