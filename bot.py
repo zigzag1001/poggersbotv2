@@ -788,9 +788,14 @@ async def skip(ctx, num: int = 1):
 
 
 @bot.command(name="queue", help="Shows the current queue", aliases=["q"])
-async def queue(ctx, num: int = 10):
+async def queue(ctx, num = 10):
     if not is_user_connected(ctx):
         await ctx.send("You are not connected to a voice channel")
+        return
+    try:
+        num = int(num)
+    except ValueError:
+        await ctx.send("Invalid number, usage: `r;queue [number of songs to show]`")
         return
     time1 = time.time()  # debug
     await ctx.message.add_reaction("👍")
