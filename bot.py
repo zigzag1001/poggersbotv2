@@ -247,10 +247,14 @@ def clean_url(url):
         video = False
 
         if "watch?v=" in url:
-            vidid = url.split("watch?v=")[1][:11]
+            vidid = url.split("watch?v=")[1]
+            if "&" in vidid:
+                vidid = vidid.split("&")[0]
             video = True
         if "list=" in url:
-            plistid = url.split("list=")[1][:34]
+            plistid = url.split("list=")[1]
+            if "&" in plistid:
+                plistid = plistid.split("&")[0]
 
         if vidid == "" and plistid == "":
             return None
@@ -278,8 +282,14 @@ def isplaylist(url):
 
 def get_arr_from_playlist(url):
     if "youtu.be" in url or "youtube.com" in url:
+        # 41
+        # https://music.youtube.com/playlist?list=OLAK5uy_mOrlwsA-kRRg1u2xlGlH_H94gom5ZWfzY
+        # 34
+        # https://www.youtube.com/playlist?list=PLK9xhCYlDnDkxBEAqQ_y0T3buIW3EZA0Z
         if "playlist?list=" in url:
-            plistid = url.split("playlist?list=")[1][:34]
+            plistid = url.split("playlist?list=")[1]
+            if "&" in plistid:
+                plistid = plistid.split("&")[0]
             plisturl = f"https://www.youtube.com/playlist?list={plistid}"
             ytplaylist = (
                 str(os.popen(f"yt-dlp {plisturl} --flat-playlist --get-url").read())
@@ -710,14 +720,18 @@ async def play(ctx, *, search: str = None):
     mydb.close()
     if vidplist is True:
         if "&list=" in yturl:
-            plistid = yturl.split("&list=")[1][:34]
+            plistid = yturl.split("&list=")[1]
+            if "&" in plistid:
+                plistid = plistid.split("&")[0]
         else:
             return
 
         plisturl = f"https://www.youtube.com/playlist?list={plistid}"
         ytplaylist = get_arr_from_playlist(plisturl)
 
-        currentid = yturl.split("?v=")[1][:11]
+        currentid = yturl.split("?v=")[1]
+        if "&" in currentid:
+            currentid = currentid.split("&")[0]
         currenturl = f"https://www.youtube.com/watch?v={currentid}"
         ytplaylist.remove(currenturl)
 
@@ -877,25 +891,18 @@ async def shuffle(ctx, ytpurl=None):
     if ytpurl is not None:
         await ctx.message.add_reaction("➕")
         await msg.edit(content="Adding playlist to queue...\n(yt-dlp query)")
-        plisturl = ytpurl
-        if "youtu.be" in ytpurl or "youtube.com" in ytpurl:
-            # TODO: make seperate function since same thing used in three places
-            if "&list=" in ytpurl:
-                plistid = ytpurl.split("&list=")[1][:34]
-            elif "playlist?list=" in ytpurl:
-                plistid = ytpurl.split("playlist?list=")[1][:34]
-            else:
-                await ctx.send("Not a playlist url")
-                return
-            plisturl = f"https://www.youtube.com/playlist?list={plistid}"
-        elif "soundcloud.com" in ytpurl and "sets/" not in ytpurl:
+
+        ytpurl = clean_url(ytpurl)
+
+        if ytpurl is None:
+            await ctx.send("Invalid url")
+            return
+        elif isplaylist(ytpurl) is False:
             await ctx.send("Not a playlist url")
             return
-        ytplaylist = (
-            str(os.popen(f"yt-dlp {plisturl} --flat-playlist --get-url").read())
-            .strip()
-            .split("\n")
-        )
+
+        ytplaylist = get_arr_from_playlist(ytpurl)
+
         await msg.edit(
             content=f"Added {len(ytplaylist)} songs to queue...\n(Adding to playlist database)"
         )
