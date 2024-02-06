@@ -1,7 +1,7 @@
 version: "3"
 services:
 
-  devbot:
+  devbot: # DEV
     build:
       context: .
       dockerfile: bot.Dockerfile
@@ -9,7 +9,7 @@ services:
     volumes:
       - devdb:/app/db # DEV
 
-  devweb:
+  devweb: # DEV
     build:
       context: .
       dockerfile: web.Dockerfile
