@@ -562,6 +562,9 @@ async def play_audio(ctx):
 @bot.event
 async def on_ready():
     print(f"{bot.user.name} has connected to Discord!")
+    print("Connected to the following guilds:")
+    for guild in bot.guilds:
+        print(f"{guild.name} (id: {guild.id})")
     await bot.change_presence(activity=discord.Game(name="r;help"))
 
 
