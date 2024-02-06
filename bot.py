@@ -688,6 +688,8 @@ async def play(ctx, *, search: str = None):
         "SELECT id, url FROM playlist WHERE guild = ? ORDER BY id", (ctx.guild.id,)
     )
     result = mycursor.fetchall()
+    if len(result) <= 1:
+        playnext = False
 
     resultnum = 1
 
@@ -724,6 +726,7 @@ async def play(ctx, *, search: str = None):
             if "&" in plistid:
                 plistid = plistid.split("&")[0]
         else:
+            print("No list id found")
             return
 
         plisturl = f"https://www.youtube.com/playlist?list={plistid}"
@@ -802,7 +805,7 @@ async def skip(ctx, num: int = 1):
 
 
 @bot.command(name="queue", help="Shows the current queue", aliases=["q"])
-async def queue(ctx, num = 10):
+async def queue(ctx, num: str = "10"):
     if not is_user_connected(ctx):
         await ctx.send("You are not connected to a voice channel")
         return
@@ -838,29 +841,32 @@ async def queue(ctx, num = 10):
         todisplay = len(playlist)
     msgtext = "```markdown\n"  # markdown looks nicer than plain
     yt_data = get_yt_data(playlist[:todisplay])
+    
+    # embed
+    embed = discord.Embed(
+            color=discord.Color.green()
+    )
+
     title = yt_data[playlist[0]][0]
     duration_minsec = yt_data[playlist[0]][1]
-    msgtext += f"> {ids[0]}. {title} -- {duration_minsec}\n"
+    url = playlist[0]
+    embed.add_field(value=f"> {ids[0]}. **[{title}]({url})** -- {duration_minsec}", inline=False, name="")
+
     for x in range(1, todisplay):
         title = yt_data[playlist[x]][0]
         duration_minsec = yt_data[playlist[x]][1]
-        msgtext += f"       {x+1}. {title} -- {duration_minsec}\n"
-    print(f"Queue time taken: {time.time() - time1}")  # debug
-    fullmsg = msgtext + extra
-    # Discord has a 2000 character limit, so if the queue is longer than that, split it into parts
-    if len(fullmsg) >= 2000:
-        partmsg = "```markdown\n"
-        for x in range(todisplay):
-            title = yt_data[playlist[x]][0]
-            duration_minsec = yt_data[playlist[x]][1]
-            partmsg += f"{x+1}. {title} -- {duration_minsec}\n"
-            if len(partmsg) >= 1900:
-                await ctx.send(partmsg + "```")
-                partmsg = "```markdown\n"
-        await ctx.send(partmsg + extra + "```")
-    else:
-        await ctx.send(fullmsg + "```")
+        url = playlist[x]
+        embed.add_field(value=f"\\> {x+1}. [{title}]({url}) -- {duration_minsec}", inline=False, name="")
+        if len(embed.fields) == 25:
+            await ctx.send(embed=embed)
+            embed = discord.Embed(
+            color=discord.Color.green()
+            )
+    embed.set_footer(text=extra)
 
+    await ctx.send(embed=embed)
+    print(f"Queue time taken: {time.time() - time1}")  # debug
+    return
 
 @bot.command(name="nowplaying", help="Shows the currently playing song", aliases=["np", "now"])
 async def nowplaying(ctx):
@@ -870,7 +876,7 @@ async def nowplaying(ctx):
     if not is_connected(ctx):
         await ctx.send("I am not connected to a voice channel")
         return
-    await queue(ctx, 2)
+    await queue(ctx, "2")
 
 
 @bot.command(
