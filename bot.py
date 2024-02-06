@@ -407,7 +407,7 @@ async def play_audio(ctx):
             five_times += 1
             if five_times == 120:
                 await ctx.send("Inactive for 10 minutes, disconnecting...")
-                await stop(ctx)
+                await stop(None, ctx.guild)
                 return
             playlist = []
             mydb = sqlite3.connect(db_name)
@@ -562,6 +562,9 @@ async def play_audio(ctx):
 @bot.event
 async def on_ready():
     print(f"{bot.user.name} has connected to Discord!")
+    print("Connected to the following guilds:")
+    for guild in bot.guilds:
+        print(f"{guild.name} (id: {guild.id})")
     await bot.change_presence(activity=discord.Game(name="r;help"))
 
 
@@ -604,9 +607,6 @@ async def on_voice_state_update(member, before, after):
 async def play(ctx, *, search: str = None):
     ytplaylist = []
     playnext = False
-    if search.endswith("-pn!"): # janky but cant add arguments to play command
-        search = search[:-4]
-        playnext = True
     if not is_user_connected(ctx):
         await ctx.send("You are not connected to a voice channel")
         return
@@ -615,6 +615,10 @@ async def play(ctx, *, search: str = None):
         if not is_playing(ctx):
             await play_audio(ctx)
         return
+    if search.endswith("-pn!"): # janky but cant add arguments to play command
+        search = search[:-4]
+        playnext = True
+
 
     # Check if search is a url using regex
     protocol = r"(https:\/\/www\.|http:\/\/www\.|https:\/\/|http:\/\/)?"
