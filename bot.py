@@ -424,6 +424,7 @@ async def play_audio(ctx):
             five_times += 1
             if five_times == 120:
                 await ctx.send("Inactive for 10 minutes, disconnecting...")
+                print(f"{ctx.guild.name} - Inactive for 10 minutes, disconnecting")
                 await stop(None, ctx.guild)
                 return
             playlist = []
@@ -785,7 +786,7 @@ async def stop(ctx, guild=None):
             await ctx.send("I am not connected to a voice channel")
             return
         guild = ctx.guild
-        print(f"{guild.name} - Stopping and disconnecting...")
+    print(f"{guild.name} - Stopping and disconnecting...")
     mydb = sqlite3.connect(db_name)
     mycursor = mydb.cursor()
     mycursor.execute("DELETE FROM playlist WHERE guild = ?", (guild.id,))
