@@ -179,7 +179,9 @@ def get_yt_data(urls_list):
                 print("HTTPError", url)
             if "youtu.be" in url or "youtube.com" in url:
                 name = (
-                    re.search(r"<title>(.*?)</title>", html).group(1).split(" - YouTube")[0]
+                    re.search(r"<title>(.*?)</title>", html)
+                    .group(1)
+                    .split(" - YouTube")[0]
                 )
                 try:
                     duration = re.search(r'"lengthSeconds":"(.*?)"', html).group(1)
@@ -188,22 +190,33 @@ def get_yt_data(urls_list):
             elif "soundcloud.com" in url:
                 time1 = time.time()  # debug
                 if "api-v2" in url:
-                    data = os.popen(f"yt-dlp {url} --get-title --get-duration").read().strip().split("\n")
+                    data = (
+                        os.popen(f"yt-dlp {url} --get-title --get-duration")
+                        .read()
+                        .strip()
+                        .split("\n")
+                    )
                     name = data[0]
                     duration = data[1]
                     min = int(duration.split(":")[0])
                     sec = int(duration.split(":")[1])
                     duration = str(min * 60 + sec)
                 else:
-                    name = re.search(r'<meta property="og:title" content="(.*?)">', html).group(1)
+                    name = re.search(
+                        r'<meta property="og:title" content="(.*?)">', html
+                    ).group(1)
                     try:
-                        duration = re.search(r'<span aria-hidden="true">(\d+):(\d+)</span>', html)
+                        duration = re.search(
+                            r'<span aria-hidden="true">(\d+):(\d+)</span>', html
+                        )
                         mins = int(duration.group(1))
                         secs = int(duration.group(2))
                         duration = str(mins * 60 + secs)
                     except AttributeError:
                         duration = None
-                print(f"Soundcloud name duration time taken: {time.time() - time1}")  # debug
+                print(
+                    f"Soundcloud name duration time taken: {time.time() - time1}"
+                )  # debug
             else:
                 print("Not a valid url")
                 name = "Invalid url"
@@ -242,7 +255,6 @@ def clean_url(url):
     if " " in url:
         url = url.split(" ")[0]
 
-    
     if "youtu.be" in url or "youtube.com" in url:
         vidid = ""
         plistid = ""
@@ -262,7 +274,9 @@ def clean_url(url):
             return None
 
         if video:
-            return f"https://youtube.com/watch?v={vidid}" + (f"&list={plistid}" if plistid != "" else "")
+            return f"https://youtube.com/watch?v={vidid}" + (
+                f"&list={plistid}" if plistid != "" else ""
+            )
         else:
             return f"https://youtube.com/playlist?list={plistid}"
     elif "soundcloud.com" in url:
@@ -361,7 +375,7 @@ async def choose(ctx, choices, msg, time):
 
         # type to choose
         last_message = await channel.fetch_message(channel.last_message_id)
-        if (last_message.content in choices_nums and last_message.author != bot.user):
+        if last_message.content in choices_nums and last_message.author != bot.user:
             result = int(last_message.content) - 1
             await last_message.add_reaction("👍")
             continue
@@ -439,7 +453,10 @@ async def play_audio(ctx):
             if not moved:
                 info = ytdl.extract_info(url, download=False)
                 for format in info["formats"]:
-                    if format["format_id"] == "251" or format["format_id"] == "http_mp3_128":
+                    if (
+                        format["format_id"] == "251"
+                        or format["format_id"] == "http_mp3_128"
+                    ):  # youtube and soundcloud
                         pureurl = format["url"]
                         break
 
@@ -474,10 +491,11 @@ async def play_audio(ctx):
                     moved = True
                     voice_client.stop()
                     continue
-                    #voice_client.pause()
+                    # voice_client.pause()
                 # Checks for bot control actions
                 mycursor.execute(
-                    "SELECT action, extra FROM bot_control WHERE guild = ?", (ctx.guild.id,)
+                    "SELECT action, extra FROM bot_control WHERE guild = ?",
+                    (ctx.guild.id,),
                 )
                 action = mycursor.fetchone()
                 mydb.close()
@@ -523,7 +541,7 @@ async def play_audio(ctx):
                                 paused = False
                         mydb.close()
                         voice_client.resume()
-                    elif action[0] == 'ss':
+                    elif action[0] == "ss":
                         mycursor.execute(
                             "DELETE FROM bot_control WHERE guild = ? AND action = ?",
                             (ctx.guild.id, "ss"),
@@ -623,10 +641,9 @@ async def play(ctx, *, search: str = None):
         if not is_playing(ctx):
             await play_audio(ctx)
         return
-    if search.endswith("-pn!"): # janky but cant add arguments to play command
+    if search.endswith("-pn!"):  # janky but cant add arguments to play command
         search = search[:-4]
         playnext = True
-
 
     # Check if search is a url using regex
     protocol = r"(https:\/\/www\.|http:\/\/www\.|https:\/\/|http:\/\/)?"
@@ -671,7 +688,9 @@ async def play(ctx, *, search: str = None):
             await ctx.send("No results found / search error")
             return
         msgtext = ""
-        displaynum = 5 if len(info["search_result"]) >= 5 else len(info["search_result"])
+        displaynum = (
+            5 if len(info["search_result"]) >= 5 else len(info["search_result"])
+        )
         smsg = await ctx.send(content="Searching...")
         for x in range(displaynum):
             msgtext += f'{x+1}. {info["search_result"][x]["title"]}\n'
@@ -691,7 +710,6 @@ async def play(ctx, *, search: str = None):
         yturl = info["search_result"][resultnum]["link"]
         name = info["search_result"][resultnum]["title"]
         add_to_playlist(ctx, url=yturl, arr=[])
-
 
     # if playlist is too long, ask if user wants to add to top of queue
     mydb = sqlite3.connect(db_name)
@@ -718,14 +736,14 @@ async def play(ctx, *, search: str = None):
         secondid = result[1][0]
         lastid = result[-1][0]
         mycursor.execute(
-                "UPDATE playlist SET id = id + 1 WHERE id >= ? AND guild = ?",
-                (secondid, ctx.guild.id),
-                            )
+            "UPDATE playlist SET id = id + 1 WHERE id >= ? AND guild = ?",
+            (secondid, ctx.guild.id),
+        )
         mydb.commit()
         mycursor.execute(
-                "UPDATE playlist SET id = ? WHERE guild = ? AND id = ?",
-                (secondid, ctx.guild.id, lastid + 1),
-                            )
+            "UPDATE playlist SET id = ? WHERE guild = ? AND id = ?",
+            (secondid, ctx.guild.id, lastid + 1),
+        )
         mydb.commit()
 
     await msg.edit(content=f"Added [{name}](<{yturl}>) to queue")
@@ -783,7 +801,9 @@ async def clear(ctx):
         return
     mydb = sqlite3.connect(db_name)
     mycursor = mydb.cursor()
-    mycursor.execute("SELECT url FROM playlist WHERE guild = ? ORDER BY id LIMIT 1", (ctx.guild.id,))
+    mycursor.execute(
+        "SELECT url FROM playlist WHERE guild = ? ORDER BY id LIMIT 1", (ctx.guild.id,)
+    )
     firsturl = mycursor.fetchone()
     mycursor.execute("DELETE FROM playlist WHERE guild = ?", (ctx.guild.id,))
     mydb.commit()
@@ -806,7 +826,10 @@ async def skip(ctx, num: int = 1):
     elif num > 1:
         mydb = sqlite3.connect(db_name)
         mycursor = mydb.cursor()
-        mycursor.execute("DELETE FROM playlist WHERE guild = ? ORDER BY id LIMIT ?", (ctx.guild.id, num-1))
+        mycursor.execute(
+            "DELETE FROM playlist WHERE guild = ? ORDER BY id LIMIT ?",
+            (ctx.guild.id, num - 1),
+        )
         mydb.commit()
         mydb.close()
         await ctx.send(f"Skipped to song +{num}")
@@ -856,32 +879,39 @@ async def queue(ctx, num: str = "10"):
     await queuemsg.delete()
 
     # embed
-    embed = discord.Embed(
-            color=discord.Color.green()
-    )
+    embed = discord.Embed(color=discord.Color.green())
 
     title = yt_data[playlist[0]][0]
     duration_minsec = yt_data[playlist[0]][1]
     url = playlist[0]
-    embed.add_field(value=f"> {ids[0]}. **[{title}]({url})** -- {duration_minsec}", inline=False, name="")
+    embed.add_field(
+        value=f"> {ids[0]}. **[{title}]({url})** -- {duration_minsec}",
+        inline=False,
+        name="",
+    )
 
     for x in range(1, todisplay):
         title = yt_data[playlist[x]][0]
         duration_minsec = yt_data[playlist[x]][1]
         url = playlist[x]
-        embed.add_field(value=f"\\> {x+1}. [{title}]({url}) -- {duration_minsec}", inline=False, name="")
+        embed.add_field(
+            value=f"\\> {x+1}. [{title}]({url}) -- {duration_minsec}",
+            inline=False,
+            name="",
+        )
         if len(embed.fields) == 25:
             await ctx.send(embed=embed)
-            embed = discord.Embed(
-            color=discord.Color.green()
-            )
+            embed = discord.Embed(color=discord.Color.green())
     embed.set_footer(text=extra)
 
     await ctx.send(embed=embed)
     print(f"{ctx.guild.name} - Queue time taken: {time.time() - time1}")  # debug
     return
 
-@bot.command(name="nowplaying", help="Shows the currently playing song", aliases=["np", "now"])
+
+@bot.command(
+    name="nowplaying", help="Shows the currently playing song", aliases=["np", "now"]
+)
 async def nowplaying(ctx):
     if not is_user_connected(ctx):
         await ctx.send("You are not connected to a voice channel")
@@ -1031,7 +1061,11 @@ async def join(ctx):
         await play_audio(ctx)
 
 
-@bot.command(name="ss", help="Skips to a certain time in the song", aliases=["skipsec", "skipseconds"])
+@bot.command(
+    name="ss",
+    help="Skips to a certain time in the song",
+    aliases=["skipsec", "skipseconds"],
+)
 async def ss(ctx, time=None):
     if not is_user_connected(ctx):
         await ctx.send("You are not connected to a voice channel")
@@ -1087,9 +1121,7 @@ async def ss(ctx, time=None):
         "SELECT url FROM playlist WHERE guild = ? ORDER BY id LIMIT 1", (ctx.guild.id,)
     )
     currenturl = mycursor.fetchone()
-    mycursor.execute(
-        "SELECT duration FROM yt_data WHERE url = ?", (currenturl[0],)
-    )
+    mycursor.execute("SELECT duration FROM yt_data WHERE url = ?", (currenturl[0],))
     duration = mycursor.fetchone()[0]
     mydb.close()
     h = time // 3600
@@ -1103,9 +1135,14 @@ async def ss(ctx, time=None):
     await ctx.message.add_reaction("👍")
 
 
-@bot.command(name="pn", help="Just like play, but places song next", aliases=["playnext", "pnext"])
+@bot.command(
+    name="pn",
+    help="Just like play, but places song next",
+    aliases=["playnext", "pnext"],
+)
 async def pn(ctx, *, search: str = None):
     search = search + "-pn!"  # janky but cant add arguments to play command
     await play(ctx, search=search)
+
 
 bot.run(TOKEN)
