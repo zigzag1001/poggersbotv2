@@ -18,7 +18,7 @@ load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 
 intents = discord.Intents.all()
-bot = commands.Bot(command_prefix=["r; ", "r;", "R;", "R; "], intents=intents)
+bot = commands.Bot(command_prefix=["d; ", "d;", "D;", "D; "], intents=intents)
 
 # Configs
 
@@ -188,7 +188,6 @@ def get_yt_data(urls_list):
             elif "soundcloud.com" in url:
                 time1 = time.time()  # debug
                 if "api-v2" in url:
-                    print("api-v2")
                     data = os.popen(f"yt-dlp {url} --get-title --get-duration").read().strip().split("\n")
                     name = data[0]
                     duration = data[1]
@@ -196,7 +195,6 @@ def get_yt_data(urls_list):
                     sec = int(duration.split(":")[1])
                     duration = str(min * 60 + sec)
                 else:
-                    print("not api-v2")
                     name = re.search(r'<meta property="og:title" content="(.*?)">', html).group(1)
                     try:
                         duration = re.search(r'<span aria-hidden="true">(\d+):(\d+)</span>', html)
@@ -206,6 +204,10 @@ def get_yt_data(urls_list):
                     except AttributeError:
                         duration = None
                 print(f"Soundcloud name duration time taken: {time.time() - time1}")  # debug
+            else:
+                print("Not a valid url")
+                name = "Invalid url"
+                duration = None
 
             # duration calculation
             if duration is None:
@@ -392,6 +394,7 @@ async def play_audio(ctx):
     if not is_connected(ctx):
         await web(ctx, "Web interface: ")
         await ctx.author.voice.channel.connect()
+        print(f"{ctx.guild.name} - Connected to {ctx.author.voice.channel.name}")
 
     moved = False
     progresstime = 0
@@ -399,7 +402,7 @@ async def play_audio(ctx):
 
     while is_connected(ctx):
         if is_playing(ctx):
-            print("Already playing, returning (in loop)")  # debug
+            print(f"{ctx.guild.name} - Already playing, returning (in loop)")  # debug
             return
 
         # Checks if bot is inactive and if songs have been added in web
@@ -459,7 +462,7 @@ async def play_audio(ctx):
                 source = discord.FFmpegPCMAudio(pureurl, **ffmpeg_opts)
             source.read()
             voice_client.play(source)
-            print(f"Playing {url}")
+            print(f"{ctx.guild.name} - Playing {url}")
 
             # main audio loop, also checks for bot control actions
             while voice_client.is_playing():
@@ -537,8 +540,12 @@ async def play_audio(ctx):
                 await asyncio.sleep(1)
             voice_client.stop()
         except Exception as e:
-            print(e)
+            print(ctx.guild.name, "\n=======\n", e, "\n=======\n")
             e = str(e)
+            if e.startswith("ERROR: [youtube]"):
+                e = e.split("ERROR: [youtube]")[1]
+            else:
+                e = "Unknown error"
             if len(e) > 2000:
                 e = e[:1900] + "(too long)..."
             await ctx.send(f"Error playing {url}\n```\n{e}```")
@@ -573,7 +580,7 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
-    if message.content.lower().startswith("r;"):
+    if message.content.lower().startswith("d;"):
         await bot.process_commands(message)
 
 
@@ -585,11 +592,12 @@ async def on_voice_state_update(member, before, after):
         return
     # stop if bot is alone in voice channel
     if bot_voice_channel.channel.members == [bot.user]:
+        print(f"{member.guild.name} - Bot alone, leaving...")
         await stop(None, member.guild)
         return
     # stop if bot is force disconnected from voice channel
     if member == bot.user and member not in bot_voice_channel.channel.members:
-        print("Bot disconnected")
+        print(f"{member.guild.name} - Bot force disconnected, leaving...")
         await stop(None, member.guild)
         return
 
@@ -869,7 +877,7 @@ async def queue(ctx, num: str = "10"):
     embed.set_footer(text=extra)
 
     await ctx.send(embed=embed)
-    print(f"Queue time taken: {time.time() - time1}")  # debug
+    print(f"{ctx.guild.name} - Queue time taken: {time.time() - time1}")  # debug
     return
 
 @bot.command(name="nowplaying", help="Shows the currently playing song", aliases=["np", "now"])
@@ -1017,6 +1025,7 @@ async def join(ctx):
         return
     await ctx.message.add_reaction("👍")
     if not is_connected(ctx):
+        print(f"{ctx.guild.name} - Joining voice channel...")
         await ctx.author.voice.channel.connect()
         await play_audio(ctx)
 
