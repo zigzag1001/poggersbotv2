@@ -785,6 +785,7 @@ async def stop(ctx, guild=None):
             await ctx.send("I am not connected to a voice channel")
             return
         guild = ctx.guild
+        print(f"{guild.name} - Stopping and disconnecting...")
     mydb = sqlite3.connect(db_name)
     mycursor = mydb.cursor()
     mycursor.execute("DELETE FROM playlist WHERE guild = ?", (guild.id,))
@@ -867,15 +868,23 @@ async def queue(ctx, num: str = "10"):
     if playlist == []:
         await ctx.send("The queue is empty")
         return
+
     extra = ""
     if num > len(playlist):
         num = len(playlist)
+
     if len(playlist) > num:
         todisplay = num
         extra = f"\n {' '*10} + {len(playlist) - num} more, {len(playlist)} total"
     else:
         todisplay = len(playlist)
-    yt_data = get_yt_data(playlist[:todisplay])
+
+    try:
+        yt_data = get_yt_data(playlist[:todisplay])
+    except Exception as e:
+        print(f"{ctx.guild.name} - Error getting yt data: {e}")
+        await queuemsg.edit(content="Error getting yt data")
+        return
     await queuemsg.delete()
 
     # embed
