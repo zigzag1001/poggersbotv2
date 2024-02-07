@@ -828,6 +828,7 @@ async def queue(ctx, num: str = "10"):
         return
     time1 = time.time()  # debug
     await ctx.message.add_reaction("👍")
+    queuemsg = await ctx.send("Loading queue...")
     playlist = []
     ids = []
     mydb = sqlite3.connect(db_name)
@@ -851,9 +852,9 @@ async def queue(ctx, num: str = "10"):
         extra = f"\n {' '*10} + {len(playlist) - num} more, {len(playlist)} total"
     else:
         todisplay = len(playlist)
-    msgtext = "```markdown\n"  # markdown looks nicer than plain
     yt_data = get_yt_data(playlist[:todisplay])
-    
+    await queuemsg.delete()
+
     # embed
     embed = discord.Embed(
             color=discord.Color.green()
@@ -955,7 +956,7 @@ async def shuffle(ctx, ytpurl=None):
     add_to_playlist(ctx, arr=urls_list, url="")
 
     await ctx.message.add_reaction("👍")
-    await msg.edit(content="Shuffled...\n(Loading titles for queue)")
+    await msg.edit(content="Shuffled...")
     await queue(ctx)
     await msg.delete()
     if not is_connected(ctx) and ytpurl is not None:
