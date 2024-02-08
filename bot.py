@@ -18,7 +18,7 @@ load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 
 intents = discord.Intents.all()
-bot = commands.Bot(command_prefix=["d; ", "d;", "D;", "D; "], intents=intents) # DEV
+bot = commands.Bot(command_prefix=["r; ", "r;", "R;", "R; "], intents=intents)
 
 # Configs
 
@@ -613,7 +613,7 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
-    if message.content.lower().startswith("d;"): # DEV
+    if message.content.lower().startswith("r;"):
         await bot.process_commands(message)
 
 
