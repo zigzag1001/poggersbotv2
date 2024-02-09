@@ -9,12 +9,12 @@
 
 ## Features
 
-- Play music from YouTube
+- Play music from YouTube, Soundcloud
 - Search query or URL
 - Supports playlists
 - Multi server support
 - Simple web interface
-- Edit queue (i.e. drag songs) from web interface
+- Edit queue (i.e. drag songs) from the web interface
 
 #### Preview Web
 ![general_webui_example](https://github.com/zigzag1001/poggersbotv2/assets/72932714/39e4dfaa-100c-4414-8fad-2a50c23b233f)
@@ -28,25 +28,42 @@ https://github.com/zigzag1001/poggersbotv2/assets/72932714/d5932a3c-98de-4eeb-8e
 ## Installation
 
 1. Install docker
+https://docs.docker.com/get-docker/
 2. Clone this repository
 ```bash
 git clone https://github.com/zigzag1001/poggersbotv2 && cd poggersbotv2
 ```
-3. Create .env file with following contents:
+3. Create file named `.env` inside this repo and copy these contents into it:
 ```env
 DISCORD_TOKEN = <your discord bot token>
 BASE_URL = http://example.com:7777/
 PORT = 7777
 ```
-4. Hope and pray (ive got no idea how / if this works on other machines)
-5. Build and run the docker containers (you might need to run as sudo)
+4. **The discord token is required**, url and port just make the web interface work. If you already have a Discord app skip to 7
+5. To create a Discord app and get the token: 
+
+   a. Create app -> https://discord.com/developers/applications?new_application=true
+
+   b. In the left menu click `Bot`, Token will be below the bot's username
+
+   c. If hidden, click reset token, it will show up
+6. To get invite link:
+
+    a. In the left menu click `OAuth2` -> `URL generator`
+
+    b. For scopes select `bot`, for permissions select the following:
+
+    `Read Messages/View Channels`, `Send Messages`, `Embed Links`, `Read Message History`, `Add Reactions`, `Connect`, `Speak`
+7. Build and run the docker containers using compose (you might need to run as sudo)
 ```bash
 docker compose up
 ```
 
+**After a few minutes you should see the bot indicate that it is running**
+
 Notes:
 - BASE_URL is the url where the bot is hosted, for example http://example.com, can also be an ip like http://192.168.1.1
-- If you are not using 80 or 443 for your port, you need to add the port to BASE_URL, for example http://example.com:8080
+- If you are not using 80 or 443 for your port, you need to add the port to BASE_URL, for example http://example.com:7777
 - For other people to access the web interface, you need to port forward the port you set in .env
 
 #### Usage
