@@ -18,7 +18,7 @@ load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 
 intents = discord.Intents.all()
-bot = commands.Bot(command_prefix=["r; ", "r;", "R;", "R; "], intents=intents)
+bot = commands.Bot(command_prefix=["d; ", "d;", "D;", "D; "], intents=intents) # DEV
 
 # Configs
 
@@ -283,6 +283,7 @@ def clean_url(url):
             vidid = url.split("youtu.be/")[1]
             if "?" in vidid:
                 vidid = vidid.split("?")[0]
+            video = True
 
         if "list=" in url:
             plistid = url.split("list=")[1]
@@ -578,7 +579,7 @@ async def play_audio(ctx):
                 await asyncio.sleep(1)
             voice_client.stop()
         except Exception as e:
-            print(colorize(ctx.guild.name, 'green'), "\n=======\n", e, "\n=======\n")
+            print(colorize(ctx.guild.name, 'green'), "\n", url, "\n", "\n=======\n", e, "\n=======\n")
             e = str(e)
             if e.startswith("ERROR: [youtube]"):
                 e = e.split("ERROR: [youtube]")[1]
@@ -618,7 +619,7 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
-    if message.content.lower().startswith("r;"):
+    if message.content.lower().startswith("d;"): # DEV
         await bot.process_commands(message)
 
 
