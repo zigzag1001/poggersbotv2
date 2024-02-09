@@ -542,6 +542,7 @@ async def play_audio(ctx):
                         mydb.commit()
                         if is_playing(ctx):
                             voice_client.pause()
+                            print(f"{colorize(ctx.guild.name, 'green')} - Paused")
                             paused = True
                         while paused:
                             mydb = sqlite3.connect(db_name)
@@ -559,6 +560,7 @@ async def play_audio(ctx):
                                     (ctx.guild.id, "playpause"),
                                 )
                                 mydb.commit()
+                                print(f"{colorize(ctx.guild.name, 'green')} - Resuming")
                                 paused = False
                         mydb.close()
                         voice_client.resume()
