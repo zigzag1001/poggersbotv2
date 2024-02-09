@@ -542,6 +542,7 @@ async def play_audio(ctx):
                         mydb.commit()
                         if is_playing(ctx):
                             voice_client.pause()
+                            await ctx.send("Paused")
                             print(f"{colorize(ctx.guild.name, 'green')} - Paused")
                             paused = True
                         while paused:
@@ -560,6 +561,7 @@ async def play_audio(ctx):
                                     (ctx.guild.id, "playpause"),
                                 )
                                 mydb.commit()
+                                await ctx.send("Resuming")
                                 print(f"{colorize(ctx.guild.name, 'green')} - Resuming")
                                 paused = False
                         mydb.close()
