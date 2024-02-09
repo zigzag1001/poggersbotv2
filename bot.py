@@ -279,6 +279,11 @@ def clean_url(url):
             if "&" in vidid:
                 vidid = vidid.split("&")[0]
             video = True
+        elif "youtu.be" in url:
+            vidid = url.split("youtu.be/")[1]
+            if "?" in vidid:
+                vidid = vidid.split("?")[0]
+
         if "list=" in url:
             plistid = url.split("list=")[1]
             if "&" in plistid:
