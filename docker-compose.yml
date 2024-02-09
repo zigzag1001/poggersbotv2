@@ -20,4 +20,4 @@ services:
       - db:/app/db
 
 volumes:
-  devdb:
+  db:
