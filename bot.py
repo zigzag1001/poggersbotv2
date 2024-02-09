@@ -279,6 +279,12 @@ def clean_url(url):
             if "&" in vidid:
                 vidid = vidid.split("&")[0]
             video = True
+        elif "youtu.be" in url:
+            vidid = url.split("youtu.be/")[1]
+            if "?" in vidid:
+                vidid = vidid.split("?")[0]
+            video = True
+
         if "list=" in url:
             plistid = url.split("list=")[1]
             if "&" in plistid:
@@ -573,7 +579,7 @@ async def play_audio(ctx):
                 await asyncio.sleep(1)
             voice_client.stop()
         except Exception as e:
-            print(colorize(ctx.guild.name, 'green'), "\n=======\n", e, "\n=======\n")
+            print(colorize(ctx.guild.name, 'green'), "\n", url, "\n", "\n=======\n", e, "\n=======\n")
             e = str(e)
             if e.startswith("ERROR: [youtube]"):
                 e = e.split("ERROR: [youtube]")[1]
