@@ -16,9 +16,11 @@ from discord.utils import get
 load_dotenv()
 
 TOKEN = os.getenv("DISCORD_TOKEN")
+PREFIX = os.getenv("PREFIX")
+prefix_variations = [PREFIX.lower(), PREFIX.lower() + " ", PREFIX.upper(), PREFIX.upper() + " "]
 
 intents = discord.Intents.all()
-bot = commands.Bot(command_prefix=["r; ", "r;", "R;", "R; "], intents=intents)
+bot = commands.Bot(command_prefix=prefix_variations, intents=intents)
 
 # Configs
 
@@ -389,7 +391,7 @@ async def choose(ctx, choices, msg, time):
     choices_nums = [str(x) for x in range(1, len(choices) + 1)]
     temp = choices_nums.copy()
     for c in temp:
-        choices_nums.append('r;' + c)
+        choices_nums.append(PREFIX.lower() + c)
     for c in choices:
         await msg.add_reaction(c)
     for _ in range(time):
@@ -398,8 +400,8 @@ async def choose(ctx, choices, msg, time):
 
         # type to choose
         last_message = await channel.fetch_message(channel.last_message_id)
-        if last_message.content in choices_nums and last_message.author != bot.user:
-            result = int(last_message.content.strip("r;")) - 1
+        if last_message.content.lower() in choices_nums and last_message.author != bot.user:
+            result = int(last_message.content.lower().strip(PREFIX.lower())) - 1
             await last_message.add_reaction("👍")
             continue
 
@@ -619,7 +621,7 @@ async def on_ready():
     print("Connected to the following guilds:")
     for guild in bot.guilds:
         print(f"{colorize(guild.name, 'green')} (id: {guild.id})")
-    await bot.change_presence(activity=discord.Game(name="r;help"))
+    await bot.change_presence(activity=discord.Game(name=f"{PREFIX}help"))
 
 
 @bot.event
@@ -627,7 +629,7 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
-    if message.content.lower().startswith("r;"):
+    if message.content.lower().startswith(PREFIX.lower()):
         await bot.process_commands(message)
 
 
@@ -878,7 +880,7 @@ async def queue(ctx, num: str = "10"):
     try:
         num = int(num)
     except ValueError:
-        await ctx.send("Invalid number, usage: `r;queue [number of songs to show]`")
+        await ctx.send(f"Invalid number, usage: `{PREFIX}queue [number of songs to show]`")
         return
     time1 = time.time()  # debug
     await ctx.message.add_reaction("👍")
