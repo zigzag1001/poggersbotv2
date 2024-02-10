@@ -18,7 +18,7 @@ load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 
 intents = discord.Intents.all()
-bot = commands.Bot(command_prefix=["r; ", "r;", "R;", "R; "], intents=intents)
+bot = commands.Bot(command_prefix=["d; ", "d;", "D;", "D; "], intents=intents) # DEV
 
 # Configs
 
@@ -525,7 +525,7 @@ async def play_audio(ctx):
                     mycursor = mydb.cursor()
                     # skpis by stopping current audio, loop goes on to next song
                     if action[0] == "skip":
-                        print("Skipping...")
+                        print(f"{colorize(ctx.guild.name, 'green')} - Skipping")
                         voice_client.stop()
                         mycursor.execute(
                             "DELETE FROM bot_control WHERE guild = ? AND action = ?",
@@ -548,17 +548,18 @@ async def play_audio(ctx):
                         while paused:
                             mydb = sqlite3.connect(db_name)
                             mycursor = mydb.cursor()
+                            # if pause or skip, unpause
                             mycursor.execute(
-                                "SELECT action FROM bot_control WHERE guild = ? AND action = ?",
-                                (ctx.guild.id, "playpause"),
+                                    "SELECT action FROM bot_control WHERE guild = ?",
+                                    (ctx.guild.id,)
                             )
                             action = mycursor.fetchone()
                             if action is None:
                                 await asyncio.sleep(1)
                             else:
                                 mycursor.execute(
-                                    "DELETE FROM bot_control WHERE guild = ? AND action = ?",
-                                    (ctx.guild.id, "playpause"),
+                                    "DELETE FROM bot_control WHERE guild = ?",
+                                    (ctx.guild.id,)
                                 )
                                 mydb.commit()
                                 await ctx.send("Resuming")
@@ -623,7 +624,7 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
-    if message.content.lower().startswith("r;"):
+    if message.content.lower().startswith("d;"): # DEV
         await bot.process_commands(message)
 
 
@@ -814,6 +815,7 @@ async def stop(ctx, guild=None):
     mydb = sqlite3.connect(db_name)
     mycursor = mydb.cursor()
     mycursor.execute("DELETE FROM playlist WHERE guild = ?", (guild.id,))
+    mycursor.execute("DELETE FROM bot_control WHERE guild = ?", (guild.id,))
     mydb.commit()
     mydb.close()
     voice_client = guild.voice_client
