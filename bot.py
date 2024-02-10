@@ -1162,8 +1162,7 @@ async def ss(ctx, time=None):
         "SELECT url FROM playlist WHERE guild = ? ORDER BY id LIMIT 1", (ctx.guild.id,)
     )
     currenturl = mycursor.fetchone()
-    mycursor.execute("SELECT duration FROM yt_data WHERE url = ?", (currenturl[0],))
-    duration = mycursor.fetchone()[0]
+    duration = get_yt_data([currenturl[0]])[currenturl[0]][1]
     mydb.close()
     h = time // 3600
     m = time % 3600 // 60
