@@ -387,6 +387,9 @@ async def choose(ctx, choices, msg, time):
     result = -1
     channel = ctx.channel
     choices_nums = [str(x) for x in range(1, len(choices) + 1)]
+    temp = choices_nums.copy()
+    for c in temp:
+        choices_nums.append('r;' + c)
     for c in choices:
         await msg.add_reaction(c)
     for _ in range(time):
@@ -396,7 +399,7 @@ async def choose(ctx, choices, msg, time):
         # type to choose
         last_message = await channel.fetch_message(channel.last_message_id)
         if last_message.content in choices_nums and last_message.author != bot.user:
-            result = int(last_message.content) - 1
+            result = int(last_message.content.strip("r;")) - 1
             await last_message.add_reaction("👍")
             continue
 
