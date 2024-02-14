@@ -422,7 +422,7 @@ async def play_audio(ctx):
     if is_playing(ctx):
         print("Already playing, returning")  # debug
         return
-    five_times = 0  # For checking if bot is inactive 5*120 = 10 minutes
+    five_times = 0  # For checking if bot is inactive
     mydb = sqlite3.connect(db_name)
     mycursor = mydb.cursor()
     mycursor.execute(
@@ -447,9 +447,9 @@ async def play_audio(ctx):
         # Checks if bot is inactive and if songs have been added in web
         if playlist == [] and is_connected(ctx):
             five_times += 1
-            if five_times == 120:
-                await ctx.send("Inactive for 10 minutes, disconnecting...")
-                print(f"{colorize(ctx.guild.name, 'green')} - Inactive for 10 minutes, disconnecting")
+            if five_times == (60 * 30):
+                await ctx.send("Inactive for 30 minutes, disconnecting...")
+                print(f"{colorize(ctx.guild.name, 'green')} - Inactive for 30 minutes, disconnecting")
                 await stop(None, ctx.guild)
                 return
             playlist = []
