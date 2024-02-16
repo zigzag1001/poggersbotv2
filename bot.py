@@ -392,6 +392,8 @@ async def choose(ctx, choices, msg, time):
     temp = choices_nums.copy()
     for c in temp:
         choices_nums.append(PREFIX.lower() + c)
+        choices_nums.append(PREFIX.lower() + "p " + c)
+        choices_nums.append(PREFIX.lower() + "play " + c)
     for c in choices:
         await msg.add_reaction(c)
     for _ in range(time):
@@ -400,8 +402,9 @@ async def choose(ctx, choices, msg, time):
 
         # type to choose
         last_message = await channel.fetch_message(channel.last_message_id)
-        if last_message.content.lower() in choices_nums and last_message.author != bot.user:
-            result = int(last_message.content.lower().strip(PREFIX.lower())) - 1
+        clean_msg = last_message.content.lower().strip()
+        if clean_msg in choices_nums and last_message.author != bot.user:
+            result = int(clean_msg.strip(PREFIX.lower() + "play")) - 1
             await last_message.add_reaction("👍")
             continue
 
@@ -422,7 +425,7 @@ async def play_audio(ctx):
     if is_playing(ctx):
         print("Already playing, returning")  # debug
         return
-    five_times = 0  # For checking if bot is inactive 5*120 = 10 minutes
+    five_times = 0  # For checking if bot is inactive
     mydb = sqlite3.connect(db_name)
     mycursor = mydb.cursor()
     mycursor.execute(
@@ -447,9 +450,9 @@ async def play_audio(ctx):
         # Checks if bot is inactive and if songs have been added in web
         if playlist == [] and is_connected(ctx):
             five_times += 1
-            if five_times == 120:
-                await ctx.send("Inactive for 10 minutes, disconnecting...")
-                print(f"{colorize(ctx.guild.name, 'green')} - Inactive for 10 minutes, disconnecting")
+            if five_times == (60 * 30):
+                await ctx.send("Inactive for 30 minutes, disconnecting...")
+                print(f"{colorize(ctx.guild.name, 'green')} - Inactive for 30 minutes, disconnecting")
                 await stop(None, ctx.guild)
                 return
             playlist = []
@@ -559,6 +562,9 @@ async def play_audio(ctx):
                                     (ctx.guild.id,)
                             )
                             action = mycursor.fetchone()
+                            if not is_connected(ctx):
+                                await stop(None, ctx.guild)
+                                break
                             if action is None:
                                 await asyncio.sleep(1)
                             else:
@@ -630,6 +636,7 @@ async def on_message(message):
         return
 
     if message.content.lower().startswith(PREFIX.lower()):
+        print(f"{colorize(message.guild.name, 'green')} - {colorize(message.author.name, 'cyan')} - {message.content}")
         await bot.process_commands(message)
 
 
@@ -683,7 +690,6 @@ async def play(ctx, *, search: str = None):
     subdomain = r"((https:\/\/www\.|http:\/\/www\.|https:\/\/|http:\/\/)?[a-zA-Z]{2,}(\.[a-zA-Z]{2,})(\.[a-zA-Z]{2,})?)"
     ip_domain = r"(https:\/\/www\.|http:\/\/www\.|https:\/\/|http:\/\/)?[a-zA-Z0-9]{2,}\.[a-zA-Z0-9]{2,}\.[a-zA-Z0-9]{2,}(\.[a-zA-Z0-9]{2,})?"
 
-    msg = await ctx.send("Adding to queue...")
     final_regex = re.compile(f"{protocol}({domain}{path}|{subdomain}|{ip_domain})")
     vidplist = False
     plist = False
@@ -697,6 +703,7 @@ async def play(ctx, *, search: str = None):
 
     # If search is a url
     if re.match(final_regex, urlsearch):
+        msg = await ctx.send("Adding to queue...")
         url_data = await add_url(ctx, urlsearch, msg)
         if url_data[0] is None:
             return
@@ -707,9 +714,8 @@ async def play(ctx, *, search: str = None):
     # If search is a search term
     else:
         if search in ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]:
-            await msg.delete()
-            await skip(ctx, int(search))
             return
+        msg = await ctx.send("Adding to queue...")
         await ctx.message.add_reaction("🔎")
         search = SearchVideos(search, offset=1, mode="json", max_results=5)
         info = search.result()
