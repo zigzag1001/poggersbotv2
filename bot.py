@@ -636,6 +636,7 @@ async def on_message(message):
         return
 
     if message.content.lower().startswith(PREFIX.lower()):
+        print(f"{colorize(message.guild.name, 'green')} - {colorize(message.author.name, 'cyan')} - {message.content}")
         await bot.process_commands(message)
 
 
