@@ -265,6 +265,8 @@ def get_yt_data(urls_list):
     return urls_list_data
 
 
+# Takes url, removes extra arguments, validates
+# returns cleaned url or None if invalid
 def clean_url(url):
     if "\n" in url:
         url = url.split("\n")[0]
@@ -308,6 +310,7 @@ def clean_url(url):
         return None
 
 
+# Takes url, returns True if it's a playlist
 def isplaylist(url):
     if "youtu.be" in url or "youtube.com" in url:
         if "playlist?list=" in url:
@@ -318,6 +321,8 @@ def isplaylist(url):
     return False
 
 
+# Takes url, returns array of urls if it's a playlist
+# returns None if not a playlist
 def get_arr_from_playlist(url):
     if "youtu.be" in url or "youtube.com" in url:
         # 41
@@ -347,10 +352,16 @@ def get_arr_from_playlist(url):
     return None
 
 
+# Takes context, url, and optional message to edit
+# adds url to playlist database
+# If url is a playlist, adds all songs to playlist database
+# returns [is playlist, is video and playlist, url, name]
 async def add_url(ctx, url, msg=None):
     plist = False
     vidplist = False
     name = ""
+    if msg is None:
+        msg = await ctx.send("Adding to queue...")
 
     # new clean_url isplaylist get_arr_from_playlist
     url = clean_url(url)
@@ -385,9 +396,18 @@ async def add_url(ctx, url, msg=None):
         return [plist, vidplist, url, name]
 
 
+# Takes context, string array of choices, message to edit, and time to choose
+# max 10 choices
+# can choose by typing or reacting
+# plain number, prefix + number, prefix + play + number
+# delete message after choosing
+# returns index of choice
 async def choose(ctx, choices, msg, time):
     result = -1
     channel = ctx.channel
+    if len(choices) > 10:
+        await ctx.send("Internal error: Too many choices")
+        return -1
     choices_nums = [str(x) for x in range(1, len(choices) + 1)]
     temp = choices_nums.copy()
     for c in temp:
@@ -449,7 +469,7 @@ async def play_audio(ctx):
 
         # Checks if bot is inactive and if songs have been added in web
         if playlist == [] and is_connected(ctx):
-            five_times += 1
+            five_times += 5
             if five_times == (60 * 30):
                 await ctx.send("Inactive for 30 minutes, disconnecting...")
                 print(f"{colorize(ctx.guild.name, 'green')} - Inactive for 30 minutes, disconnecting")
