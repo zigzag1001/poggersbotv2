@@ -469,7 +469,7 @@ async def play_audio(ctx):
 
         # Checks if bot is inactive and if songs have been added in web
         if playlist == [] and is_connected(ctx):
-            five_times += 1
+            five_times += 5
             if five_times == (60 * 30):
                 await ctx.send("Inactive for 30 minutes, disconnecting...")
                 print(f"{colorize(ctx.guild.name, 'green')} - Inactive for 30 minutes, disconnecting")
