@@ -374,6 +374,9 @@ async def add_url(ctx, url, msg=None):
         msgtext = "Adding playlist to queue...\n"
         await msg.edit(content=msgtext + "(yt-dlp query)")
         arr = get_arr_from_playlist(url)
+        if arr is None:
+            await ctx.send("Error getting playlist")
+            return [None, None, None, None]
         await msg.edit(
             content=f"Added {len(arr)} songs to queue...\n(Adding to playlist database)"
         )
@@ -819,15 +822,19 @@ async def play(ctx, *, search: str = None):
         plisturl = f"https://www.youtube.com/playlist?list={plistid}"
         ytplaylist = get_arr_from_playlist(plisturl)
 
-        currentid = yturl.split("?v=")[1]
-        if "&" in currentid:
-            currentid = currentid.split("&")[0]
-        currenturl = f"https://www.youtube.com/watch?v={currentid}"
-        ytplaylist.remove(currenturl)
+        if ytplaylist is None or ytplaylist == [] or ytplaylist == ['']:
+            await ctx.send("Nevermind, Error getting playlist")
+        else:
+            currentid = yturl.split("?v=")[1]
+            if "&" in currentid:
+                currentid = currentid.split("&")[0]
+            currenturl = f"https://www.youtube.com/watch?v={currentid}"
+            if currenturl in ytplaylist:
+                ytplaylist.remove(currenturl)
 
-        add_to_playlist(ctx, arr=ytplaylist, url="")
+            add_to_playlist(ctx, arr=ytplaylist, url="")
 
-        await ctx.send(f"Added {len(ytplaylist)} songs to queue...")
+            await ctx.send(f"Added {len(ytplaylist)} songs to queue...")
     if not is_connected(ctx):
         await play_audio(ctx)
 
