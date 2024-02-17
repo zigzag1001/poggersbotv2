@@ -238,6 +238,9 @@ def get_yt_data(urls_list):
                 name = "Invalid url"
                 duration = None
 
+            if name is None or name == "":
+                name = "Unknown"
+
             # duration calculation
             if duration is None:
                 duration = 0
