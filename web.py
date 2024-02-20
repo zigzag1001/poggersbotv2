@@ -457,9 +457,13 @@ def add_song():
             plisturl = search
             if "youtube.com" in search or "youtu.be" in search:
                 if "&list=" in search:
-                    plistid = search.split("&list=")[1][:34]
+                    plistid = search.split("&list=")[1]
                 elif "playlist?list=" in search:
-                    plistid = search.split("playlist?list=")[1][:34]
+                    plistid = search.split("playlist?list=")[1]
+
+                if "&" in plistid:
+                    plistid = plistid.split("&")[0]
+
                 plisturl = f"https://www.youtube.com/playlist?list={plistid}"
             ytplaylist = (
                 str(os.popen(f"yt-dlp {plisturl} --flat-playlist --get-url").read())
