@@ -332,8 +332,8 @@ def get_arr_from_playlist(url):
         # https://music.youtube.com/playlist?list=OLAK5uy_mOrlwsA-kRRg1u2xlGlH_H94gom5ZWfzY
         # 34
         # https://www.youtube.com/playlist?list=PLK9xhCYlDnDkxBEAqQ_y0T3buIW3EZA0Z
-        if "playlist?list=" in url:
-            plistid = url.split("playlist?list=")[1]
+        if "list=" in url:
+            plistid = url.split("list=")[1]
             if "&" in plistid:
                 plistid = plistid.split("&")[0]
             plisturl = f"https://www.youtube.com/playlist?list={plistid}"
@@ -842,7 +842,7 @@ async def play(ctx, *, search: str = None):
         await play_audio(ctx)
 
 
-@bot.command(name="stop", help="Stops playing audio, clear queue and disconnects bot")
+@bot.command(name="stop", help="Stops playing audio, clear queue and disconnects bot", aliases=["disconnect", "dc"])
 async def stop(ctx, guild=None):
     if ctx is not None:
         if not is_user_connected(ctx):
@@ -1023,7 +1023,7 @@ async def shuffle(ctx, ytpurl=None):
         if ytpurl is None:
             await ctx.send("Invalid url")
             return
-        elif isplaylist(ytpurl) is False:
+        elif isplaylist(ytpurl) is False and "list=" not in ytpurl:
             await ctx.send("Not a playlist url")
             return
 
