@@ -842,7 +842,7 @@ async def play(ctx, *, search: str = None):
         await play_audio(ctx)
 
 
-@bot.command(name="stop", help="Stops playing audio, clear queue and disconnects bot")
+@bot.command(name="stop", help="Stops playing audio, clear queue and disconnects bot", aliases=["disconnect", "dc"])
 async def stop(ctx, guild=None):
     if ctx is not None:
         if not is_user_connected(ctx):
