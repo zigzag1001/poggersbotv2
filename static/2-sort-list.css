@@ -198,8 +198,8 @@ body {
 }
 
 .controls button {
+    flex: 1;
     padding: 10px;
-    width: 20%;
     height: 50px;
     font-size: 1.5em;
     background-color: darkgray;
