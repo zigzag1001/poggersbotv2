@@ -15,7 +15,7 @@
         <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
         <script src="{{ url_for('static', filename='3-sort-list.js') }}"></script>
     </head>
-    <body>
+    <body id="body">
         <div class="header">
             <h1>Poggers Music Queue</h1>
             <p>Drag and drop to sort the list.</p>
@@ -117,7 +117,6 @@
                 }, 300); // Adjust the delay as needed
             });
 
-            
             const shuffle = document.getElementById("shuffle");
             shuffle.addEventListener("click", async () => {
                 if (debounceTimeout) {
@@ -374,5 +373,6 @@
             // Fetch data every 10 seconds
             setInterval(fetchData, 15000);
         </script>
+        <div class="background" id="background"></div>
     </body>
 </html>

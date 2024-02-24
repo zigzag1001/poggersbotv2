@@ -140,6 +140,7 @@ function fetchData() {
                     );
                     document.getElementById("first").innerHTML = firstname;
                     document.getElementById("firstthumb").src = firstthumb;
+                    document.getElementById("background").style = "background-image: url(" + firstthumb + ");";
                 }
                 button1.addEventListener("click", async () => {
                     const response = await fetch("/play_song", {
