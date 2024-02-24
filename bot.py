@@ -546,7 +546,6 @@ async def play_audio(ctx):
                     moved = True
                     voice_client.stop()
                     continue
-                    # voice_client.pause()
                 # Checks for bot control actions
                 mycursor.execute(
                     "SELECT action, extra FROM bot_control WHERE guild = ?",
@@ -567,43 +566,6 @@ async def play_audio(ctx):
                         )
                         mydb.commit()
                         mydb.close()
-                    # pause by pausing audio, loop waits for same action to resume
-                    elif action[0] == "playpause":
-                        mycursor.execute(
-                            "DELETE FROM bot_control WHERE guild = ? AND action = ?",
-                            (ctx.guild.id, "playpause"),
-                        )
-                        mydb.commit()
-                        if is_playing(ctx):
-                            voice_client.pause()
-                            await ctx.send("Paused")
-                            print(f"{colorize(ctx.guild.name, 'green')} - Paused")
-                            paused = True
-                        while paused:
-                            mydb = sqlite3.connect(db_name)
-                            mycursor = mydb.cursor()
-                            # if pause or skip, unpause
-                            mycursor.execute(
-                                    "SELECT action FROM bot_control WHERE guild = ?",
-                                    (ctx.guild.id,)
-                            )
-                            action = mycursor.fetchone()
-                            if not is_connected(ctx):
-                                await stop(None, ctx.guild)
-                                break
-                            if action is None:
-                                await asyncio.sleep(1)
-                            else:
-                                mycursor.execute(
-                                    "DELETE FROM bot_control WHERE guild = ?",
-                                    (ctx.guild.id,)
-                                )
-                                mydb.commit()
-                                await ctx.send("Resuming")
-                                print(f"{colorize(ctx.guild.name, 'green')} - Resuming")
-                                paused = False
-                        mydb.close()
-                        voice_client.resume()
                     elif action[0] == "ss":
                         mycursor.execute(
                             "DELETE FROM bot_control WHERE guild = ? AND action = ?",
@@ -1095,29 +1057,6 @@ async def loop(ctx):
     await ctx.message.add_reaction("👍")
     mydb.commit()
     mydb.close()
-
-
-@bot.command(
-    name="pause", help="Pauses/unpauses the bot", aliases=["resume", "unpause"]
-)
-async def pause(ctx):
-    if not is_user_connected(ctx):
-        await ctx.send("You are not connected to a voice channel")
-        return
-    if not is_connected(ctx):
-        await ctx.send("I am not connected to a voice channel")
-        return
-    mydb = sqlite3.connect(db_name)
-    mycursor = mydb.cursor()
-    mycursor.execute(
-        "INSERT INTO bot_control (guild, action) VALUES (?, ?)",
-        (ctx.guild.id, "playpause"),
-    )
-    mydb.commit()
-    mydb.close()
-    await ctx.message.add_reaction("👍")
-    if not is_connected(ctx):
-        await play_audio(ctx)
 
 
 @bot.command(name="web", help="Shows the web interface link", aliases=["website", "w"])

@@ -335,20 +335,6 @@ def skip_song():
     return jsonify({"success": True})
 
 
-@app.route("/playpause", methods=["POST"])
-def play_pause():
-    data = request.get_json()
-    guild = int(data.get("guild"))
-    mydb = sqlite3.connect(db_name)
-    cursor = mydb.cursor()
-    cursor.execute(
-        f"INSERT INTO bot_control (guild, action) VALUES (?, ?)", (guild, "playpause")
-    )
-    mydb.commit()
-    mydb.close()
-    return jsonify({"success": True})
-
-
 @app.route("/shuffle", methods=["POST"])
 def shuffle():
     data = request.get_json()
