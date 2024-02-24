@@ -25,7 +25,6 @@
             <div class="firstimgcontainer"><img id="firstthumb" src="" /></div>
             <div class="currenttitle" id="first"></div>
             <div class="controls" id="second">
-                <button class="playpause" id="playpause">Play/Pause</button>
                 <button class="skip" id="skip">Skip</button>
                 <button class="shuffle" id="shuffle">Shuffle</button>
                 <button class="loop" id="loop">Loop</button>
@@ -118,28 +117,7 @@
                 }, 300); // Adjust the delay as needed
             });
 
-            const playpause = document.getElementById("playpause");
-            playpause.addEventListener("click", async () => {
-                if (debounceTimeout) {
-                    clearTimeout(debounceTimeout);
-                }
-
-                debounceTimeout = setTimeout(async () => {
-                    const response = await fetch("/playpause", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({
-                            guild: guild,
-                        }),
-                    });
-
-                    const data = await response.json();
-                    fetchData();
-                }, 300); // Adjust the delay as needed
-            });
-
+            
             const shuffle = document.getElementById("shuffle");
             shuffle.addEventListener("click", async () => {
                 if (debounceTimeout) {
