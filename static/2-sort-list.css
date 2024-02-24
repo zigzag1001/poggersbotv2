@@ -185,6 +185,7 @@ body {
     height: 110%;
     z-index: -1;
     filter: blur(30px) brightness(0.5) hue-rotate(180deg);
+    background-size: cover;
 }
 
 .current {

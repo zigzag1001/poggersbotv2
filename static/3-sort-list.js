@@ -133,14 +133,14 @@ function fetchData() {
                     li.draggable = false;
                     li.style = "background-color: #5B5B66;";
                     var firstname = song.name;
-                    var firstthumb = song.thumbnail;
-                    firstthumb = firstthumb.replace(
+                    var smallthumb = song.thumbnail;
+                    var firstthumb = smallthumb.replace(
                         "mqdefault",
                         "maxresdefault",
                     );
                     document.getElementById("first").innerHTML = firstname;
                     document.getElementById("firstthumb").src = firstthumb;
-                    document.getElementById("background").style = "background-image: url(" + firstthumb + ");";
+                    document.getElementById("background").style = "background-image: url(" + smallthumb + ");";
                 }
                 button1.addEventListener("click", async () => {
                     const response = await fetch("/play_song", {
