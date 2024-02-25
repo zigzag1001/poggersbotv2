@@ -17,7 +17,12 @@ load_dotenv()
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 PREFIX = os.getenv("PREFIX")
-prefix_variations = [PREFIX.lower(), PREFIX.lower() + " ", PREFIX.upper(), PREFIX.upper() + " "]
+prefix_variations = [
+    PREFIX.lower(),
+    PREFIX.lower() + " ",
+    PREFIX.upper(),
+    PREFIX.upper() + " ",
+]
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix=prefix_variations, intents=intents)
@@ -89,6 +94,7 @@ def colorize(string, color):
     }
     reset = "\033[0m"
     return colors[color] + string + reset
+
 
 def is_connected(ctx):
     voice_client = ctx.message.guild.voice_client
@@ -185,6 +191,12 @@ def get_yt_data(urls_list):
     # checks if data is in database, if not, gets from yt and caches into db
     for url in urls_list:
         if url in resultsdict:
+            if any(x in resultsdict[url][0] for x in ["&quot;", "&#39;", "&amp;"]):
+                resultsdict[url][0].replace("&quot;", '"').replace("&#39;", "'").replace("&amp;", "&")
+                mycursor.execute(
+                    "UPDATE yt_data SET name = ?, duration = ? WHERE url = ?",
+                    (resultsdict[url][0], resultsdict[url][1], url),
+                )
             urls_list_data[url] = resultsdict[url]
         else:
             # html extraction
@@ -240,6 +252,8 @@ def get_yt_data(urls_list):
 
             if name is None or name == "":
                 name = "Unknown"
+            else:
+                name = name.replace("&quot;", '"').replace("&#39;", "'").replace("&amp;", "&")
 
             # duration calculation
             if duration is None:
@@ -462,7 +476,9 @@ async def play_audio(ctx):
     if not is_connected(ctx):
         await web(ctx, "Web interface: ")
         await ctx.author.voice.channel.connect()
-        print(f"{colorize(ctx.guild.name, 'green')} - Connected to {ctx.author.voice.channel.name}")
+        print(
+            f"{colorize(ctx.guild.name, 'green')} - Connected to {ctx.author.voice.channel.name}"
+        )
 
     moved = False
     progresstime = 0
@@ -470,7 +486,9 @@ async def play_audio(ctx):
 
     while is_connected(ctx):
         if is_playing(ctx):
-            print(f"{colorize(ctx.guild.name, 'green')} - Already playing, returning (in loop)")  # debug
+            print(
+                f"{colorize(ctx.guild.name, 'green')} - Already playing, returning (in loop)"
+            )  # debug
             return
 
         # Checks if bot is inactive and if songs have been added in web
@@ -478,7 +496,9 @@ async def play_audio(ctx):
             five_times += 5
             if five_times == (60 * 30):
                 await ctx.send("Inactive for 30 minutes, disconnecting...")
-                print(f"{colorize(ctx.guild.name, 'green')} - Inactive for 30 minutes, disconnecting")
+                print(
+                    f"{colorize(ctx.guild.name, 'green')} - Inactive for 30 minutes, disconnecting"
+                )
                 await stop(None, ctx.guild)
                 return
             playlist = []
@@ -583,7 +603,15 @@ async def play_audio(ctx):
                 await asyncio.sleep(1)
             voice_client.stop()
         except Exception as e:
-            print(colorize(ctx.guild.name, 'green'), "\n", url, "\n", "\n=======\n", e, "\n=======\n")
+            print(
+                colorize(ctx.guild.name, "green"),
+                "\n",
+                url,
+                "\n",
+                "\n=======\n",
+                e,
+                "\n=======\n",
+            )
             e = str(e)
             if e.startswith("ERROR: [youtube]"):
                 e = e.split("ERROR: [youtube]")[1]
@@ -624,7 +652,9 @@ async def on_message(message):
         return
 
     if message.content.lower().startswith(PREFIX.lower()):
-        print(f"{colorize(message.guild.name, 'green')} - {colorize(message.author.name, 'cyan')} - {message.content}")
+        print(
+            f"{colorize(message.guild.name, 'green')} - {colorize(message.author.name, 'cyan')} - {message.content}"
+        )
         await bot.process_commands(message)
 
 
@@ -641,7 +671,9 @@ async def on_voice_state_update(member, before, after):
         return
     # stop if bot is force disconnected from voice channel
     if member == bot.user and member not in bot_voice_channel.channel.members:
-        print(f"{colorize(member.guild.name, 'green')} - Bot force disconnected, leaving...")
+        print(
+            f"{colorize(member.guild.name, 'green')} - Bot force disconnected, leaving..."
+        )
         await stop(None, member.guild)
         return
 
@@ -787,7 +819,7 @@ async def play(ctx, *, search: str = None):
         plisturl = f"https://www.youtube.com/playlist?list={plistid}"
         ytplaylist = get_arr_from_playlist(plisturl)
 
-        if ytplaylist is None or ytplaylist == [] or ytplaylist == ['']:
+        if ytplaylist is None or ytplaylist == [] or ytplaylist == [""]:
             await ctx.send("Nevermind, Error getting playlist")
         else:
             currentid = yturl.split("?v=")[1]
@@ -804,7 +836,11 @@ async def play(ctx, *, search: str = None):
         await play_audio(ctx)
 
 
-@bot.command(name="stop", help="Stops playing audio, clear queue and disconnects bot", aliases=["disconnect", "dc"])
+@bot.command(
+    name="stop",
+    help="Stops playing audio, clear queue and disconnects bot",
+    aliases=["disconnect", "dc"],
+)
 async def stop(ctx, guild=None):
     if ctx is not None:
         if not is_user_connected(ctx):
@@ -878,7 +914,9 @@ async def queue(ctx, num: str = "10"):
     try:
         num = int(num)
     except ValueError:
-        await ctx.send(f"Invalid number, usage: `{PREFIX}queue [number of songs to show]`")
+        await ctx.send(
+            f"Invalid number, usage: `{PREFIX}queue [number of songs to show]`"
+        )
         return
     time1 = time.time()  # debug
     await ctx.message.add_reaction("👍")
@@ -944,7 +982,9 @@ async def queue(ctx, num: str = "10"):
     embed.set_footer(text=extra)
 
     await ctx.send(embed=embed)
-    print(f"{colorize(ctx.guild.name, 'green')} - Queue time taken: {time.time() - time1}")  # debug
+    print(
+        f"{colorize(ctx.guild.name, 'green')} - Queue time taken: {time.time() - time1}"
+    )  # debug
     return
 
 

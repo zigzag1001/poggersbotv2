@@ -50,9 +50,19 @@
 }
 
 /* Other */
+@keyframes hue {
+    0% {
+        filter: hue-rotate(0deg);
+    }
+    100% {
+        filter: hue-rotate(360deg);
+    }
+}
+
 .header {
     position: fixed;
     left: 3%;
+    cursor: default;
 }
 
 .header h1 {
@@ -67,6 +77,13 @@
         -16px 14px #f9a825,
         -18px 16px #ff5722;
     margin-top: 0;
+    letter-spacing: 0.05em;
+    transition: letter-spacing 0.5s ease-in-out;
+}
+
+.header:hover h1 {
+    letter-spacing: 0.1em;
+    animation: hue 5s infinite;
 }
 
 .upnext {
@@ -160,6 +177,17 @@ body {
     color: #fff;
 }
 
+.background {
+    position: fixed;
+    top: -30px;
+    left: -30px;
+    width: 110%;
+    height: 110%;
+    z-index: -1;
+    filter: blur(30px) brightness(0.5) hue-rotate(180deg);
+    background-size: cover;
+}
+
 .current {
     width: 55%;
     position: fixed;
@@ -174,8 +202,6 @@ body {
     background-image: url("your-image-url.jpg");
     background-size: cover;
     background-position: center;
-    /* background: hotpink; */
-    background: #2a5235;
     max-width: 100%;
     overflow: hidden;
 }
@@ -183,6 +209,7 @@ body {
 .firstimgcontainer img {
     width: 100%;
     height: auto;
+    border-radius: 10px;
 }
 
 .currenttitle {
@@ -198,8 +225,8 @@ body {
 }
 
 .controls button {
+    flex: 1;
     padding: 10px;
-    width: 20%;
     height: 50px;
     font-size: 1.5em;
     background-color: darkgray;
