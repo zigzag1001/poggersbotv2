@@ -195,7 +195,7 @@ def get_yt_data(urls_list):
             if any(x in resultsdict[url][0] for x in ["&quot;", "&#39;", "&amp;"]) or resultsdict[url][0] == "":
                 if resultsdict[url][0] == "":
                     resultsdict[url] = ("Unknown", resultsdict[url][1])
-                resultsdict[url][0] = resultsdict[url][0].replace("&quot;", '"').replace("&#39;", "'").replace("&amp;", "&")
+                resultsdict[url] = (resultsdict[url][0].replace("&quot;", '"').replace("&#39;", "'").replace("&amp;", "&"), resultsdict[url][1])
                 mycursor.execute(
                     "UPDATE yt_data SET name = ?, duration = ? WHERE url = ?",
                     (resultsdict[url][0], resultsdict[url][1], url),
