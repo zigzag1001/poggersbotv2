@@ -933,9 +933,9 @@ async def queue(ctx, num: str = "10"):
     if not is_user_connected(ctx):
         await ctx.send("You are not connected to a voice channel")
         return
-    try:
+    if num.isdigit():
         num = int(num)
-    except ValueError:
+    else:
         await ctx.send(
             f"Invalid number, usage: `{PREFIX}queue [number of songs to show]`"
         )
