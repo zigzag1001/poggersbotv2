@@ -614,8 +614,8 @@ async def play_audio(ctx):
                         mydb.commit()
                         mydb.close()
                         moved = True
-                        skip_time = int(action["ss"])
-                        if action["ss"] == None or action["ss"] == "":
+                        skip_time = int(actions["ss"])
+                        if actions["ss"] == None or actions["ss"] == "":
                             skip_time = 0
                         progresstime = skip_time
                         voice_client.stop()
