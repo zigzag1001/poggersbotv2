@@ -128,6 +128,20 @@ def is_looping(ctx):
         return False
 
 
+def is_looping_queue(ctx):
+    mydb = sqlite3.connect(db_name)
+    mycursor = mydb.cursor()
+    mycursor.execute("SELECT action FROM bot_control WHERE guild = ?", (ctx.guild.id,))
+    action = mycursor.fetchone()
+    mydb.close()
+    if action is None:
+        return False
+    elif action[0] == "loopqueue":
+        return True
+    else:
+        return False
+
+
 # Adds to playlist database, but with my id method
 def add_to_playlist(ctx, url="", arr=[]):
     # either url or arr, convert to arr
@@ -631,6 +645,8 @@ async def play_audio(ctx):
                 (url, ctx.guild.id),
             )
             mydb.commit()
+            if is_looping_queue(ctx):
+                add_to_playlist(ctx, url=url, arr=[])
 
         mycursor.execute(
             "SELECT url FROM playlist WHERE guild = ? ORDER BY id", (ctx.guild.id,)
@@ -1201,6 +1217,37 @@ async def ss(ctx, time=None):
 async def pn(ctx, *, search: str = None):
     search = search + "-pn!"  # janky but cant add arguments to play command
     await play(ctx, search=search)
+
+
+@bot.command(
+        name="loopall",
+        help="Loops the entire queue",
+        aliases=["la", "loopqueue"],
+)
+async def loopall(ctx):
+    if not is_user_connected(ctx):
+        await ctx.send("You are not connected to a voice channel")
+        return
+    if not is_connected(ctx):
+        await ctx.send("I am not connected to a voice channel")
+        return
+    mydb = sqlite3.connect(db_name)
+    mycursor = mydb.cursor()
+    if is_looping_queue(ctx):
+        mycursor.execute(
+            "DELETE FROM bot_control WHERE guild = ? AND action = ?",
+            (ctx.guild.id, "loopall"),
+        )
+        await ctx.send("Stopped looping queue")
+    else:
+        mycursor.execute(
+            "INSERT INTO bot_control (guild, action) VALUES (?, ?)",
+            (ctx.guild.id, "loopall"),
+        )
+        await ctx.send("Looping queue")
+    await ctx.message.add_reaction("👍")
+    mydb.commit()
+    mydb.close()
 
 
 bot.run(TOKEN)
