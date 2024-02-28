@@ -117,11 +117,12 @@ def is_looping(ctx):
     mydb = sqlite3.connect(db_name)
     mycursor = mydb.cursor()
     mycursor.execute("SELECT action FROM bot_control WHERE guild = ?", (ctx.guild.id,))
-    action = mycursor.fetchone()
+    action = mycursor.fetchall()
+    action = [x[0] for x in action]
     mydb.close()
-    if action is None:
+    if action == []:
         return False
-    elif action[0] == "loop":
+    elif "loop" in action:
         print("looping is true")
         return True
     else:
@@ -132,11 +133,12 @@ def is_looping_queue(ctx):
     mydb = sqlite3.connect(db_name)
     mycursor = mydb.cursor()
     mycursor.execute("SELECT action FROM bot_control WHERE guild = ?", (ctx.guild.id,))
-    action = mycursor.fetchone()
+    action = mycursor.fetchall()
+    action = [x[0] for x in action]
     mydb.close()
-    if action is None:
+    if action == []:
         return False
-    elif action[0] == "loopqueue":
+    elif "loopqueue" in action:
         return True
     else:
         return False
@@ -588,13 +590,14 @@ async def play_audio(ctx):
                     "SELECT action, extra FROM bot_control WHERE guild = ?",
                     (ctx.guild.id,),
                 )
-                action = mycursor.fetchone()
+                action = mycursor.fetchall()
+                actions = dict(action)
                 mydb.close()
-                if action is not None:
+                if actions != {}:
                     mydb = sqlite3.connect(db_name)
                     mycursor = mydb.cursor()
                     # skpis by stopping current audio, loop goes on to next song
-                    if action[0] == "skip":
+                    if "skip" in actions.keys():
                         print(f"{colorize(ctx.guild.name, 'green')} - Skipping")
                         voice_client.stop()
                         mycursor.execute(
@@ -603,7 +606,7 @@ async def play_audio(ctx):
                         )
                         mydb.commit()
                         mydb.close()
-                    elif action[0] == "ss":
+                    elif "ss" in actions.keys():
                         mycursor.execute(
                             "DELETE FROM bot_control WHERE guild = ? AND action = ?",
                             (ctx.guild.id, "ss"),
@@ -612,7 +615,7 @@ async def play_audio(ctx):
                         mydb.close()
                         moved = True
                         skip_time = int(action[1])
-                        if action[1] == None or action[1] == "":
+                        if action["ss"] == None or action["ss"] == "":
                             skip_time = 0
                         progresstime = skip_time
                         voice_client.stop()
@@ -1099,6 +1102,9 @@ async def loop(ctx):
     if not is_connected(ctx):
         await ctx.send("I am not connected to a voice channel")
         return
+    if ctx.message.content.lower().endswith("all"):
+        await loopall(ctx)
+        return
     mydb = sqlite3.connect(db_name)
     mycursor = mydb.cursor()
     if is_looping(ctx):
@@ -1236,13 +1242,13 @@ async def loopall(ctx):
     if is_looping_queue(ctx):
         mycursor.execute(
             "DELETE FROM bot_control WHERE guild = ? AND action = ?",
-            (ctx.guild.id, "loopall"),
+            (ctx.guild.id, "loopqueue"),
         )
         await ctx.send("Stopped looping queue")
     else:
         mycursor.execute(
             "INSERT INTO bot_control (guild, action) VALUES (?, ?)",
-            (ctx.guild.id, "loopall"),
+            (ctx.guild.id, "loopqueue"),
         )
         await ctx.send("Looping queue")
     await ctx.message.add_reaction("👍")
