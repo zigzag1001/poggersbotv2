@@ -1250,4 +1250,44 @@ async def loopall(ctx):
     mydb.close()
 
 
+@bot.command(
+        name="delete",
+        help="Deletes a song from the queue",
+        aliases=["del"],
+        )
+async def delete(ctx, num: str = "1"):
+    if not is_user_connected(ctx):
+        await ctx.send("You are not connected to a voice channel")
+        return
+    if num.lower() == "all":
+        await clear(ctx)
+        return
+    if num.isdigit():
+        num = int(num)
+    else:
+        await ctx.send("Invalid number")
+        return
+
+    mydb = sqlite3.connect(db_name)
+    mycursor = mydb.cursor()
+    mycursor.execute(
+        "SELECT url FROM playlist WHERE guild = ? ORDER BY id", (ctx.guild.id,)
+    )
+    urls = mycursor.fetchall()
+    if urls == []:
+        await ctx.send("The queue is empty")
+        return
+    elif num > len(urls):
+        await ctx.send("Number is greater than the queue length")
+        return
+    else:
+        url = urls[num - 1][0]
+        mycursor.execute(
+            "DELETE FROM playlist WHERE guild = ? AND url = ? ORDER BY id LIMIT 1",
+            (ctx.guild.id, url),
+        )
+        mydb.commit()
+        await ctx.send(f"Deleted [{get_yt_data([url])[url][0]}](<{url}>) from queue")
+
+
 bot.run(TOKEN)
