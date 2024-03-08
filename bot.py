@@ -506,7 +506,7 @@ async def play_audio(ctx):
     while is_connected(ctx):
         if is_playing(ctx):
             print(
-                f"{colorize(ctx.guild.name, 'green')} - Already playing, returning (in loop)"
+                f"{colorize(ctx.guild.name, 'red')} - Already playing, returning (in loop)"
             )  # debug
             return
 
@@ -516,7 +516,7 @@ async def play_audio(ctx):
             if five_times == (60 * 30):
                 await ctx.send("Inactive for 30 minutes, disconnecting...")
                 print(
-                    f"{colorize(ctx.guild.name, 'green')} - Inactive for 30 minutes, disconnecting"
+                    f"{colorize(ctx.guild.name, 'red')} - Inactive for 30 minutes, disconnecting"
                 )
                 await stop(None, ctx.guild)
                 return
@@ -624,7 +624,7 @@ async def play_audio(ctx):
             voice_client.stop()
         except Exception as e:
             print(
-                colorize(ctx.guild.name, "green"),
+                colorize(ctx.guild.name, "red"),
                 "\n",
                 url,
                 "\n",
@@ -688,13 +688,13 @@ async def on_voice_state_update(member, before, after):
         return
     # stop if bot is alone in voice channel
     if bot_voice_channel.channel.members == [bot.user]:
-        print(f"{colorize(member.guild.name, 'green')} - Bot alone, leaving...")
+        print(f"{colorize(member.guild.name, 'red')} - Bot alone, leaving...")
         await stop(None, member.guild)
         return
     # stop if bot is force disconnected from voice channel
     if member == bot.user and member not in bot_voice_channel.channel.members:
         print(
-            f"{colorize(member.guild.name, 'green')} - Bot force disconnected, leaving..."
+            f"{colorize(member.guild.name, 'red')} - Bot force disconnected, leaving..."
         )
         await stop(None, member.guild)
         return
@@ -872,7 +872,7 @@ async def stop(ctx, guild=None):
             await ctx.send("I am not connected to a voice channel")
             return
         guild = ctx.guild
-    print(f"{colorize(guild.name, 'green')} - Stopping and disconnecting...")
+    print(f"{colorize(guild.name, 'red')} - Stopping and disconnecting...")
     mydb = sqlite3.connect(db_name)
     mycursor = mydb.cursor()
     mycursor.execute("DELETE FROM playlist WHERE guild = ?", (guild.id,))
@@ -972,7 +972,7 @@ async def queue(ctx, num: str = "10"):
     try:
         yt_data = get_yt_data(playlist[:todisplay])
     except Exception as e:
-        print(f"{colorize(ctx.guild.name, 'green')} - Error getting yt data: {e}")
+        print(f"{colorize(ctx.guild.name, 'red')} - Error getting yt data: {e}")
         await queuemsg.edit(content="Error getting yt data")
         return
     await queuemsg.delete()
