@@ -496,6 +496,8 @@ async def add_url(ctx, url, msg=None):
         return [None, None, None, None]
 
     if isplaylist(url):
+        if "spotify.com" in url:
+            await ctx.send("Spotify playlists only get the first 30 songs!!!")
         plist = True
         msgtext = "Adding playlist to queue...\n"
         await msg.edit(content=msgtext + "(yt-dlp query)")
