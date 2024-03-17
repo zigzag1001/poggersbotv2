@@ -217,6 +217,18 @@ def get_yt_data(urls_list):
                     (resultsdict[url][0], resultsdict[url][1], url),
                 )
             urls_list_data[url] = resultsdict[url]
+        elif url.startswith("search://"):
+            name = url.split("search://")[1]
+            duration = "0:00"
+            try:
+                mycursor.execute(
+                        "INSERT INTO yt_data (url, name, duration) VALUES (?, ?, ?)",
+                        (url, name, duration),
+                )
+                mydb.commit()
+            except sqlite3.IntegrityError:
+                print("get_yt_data IntegrityError")
+            urls_list_data[url] = (name, duration)
         else:
             # html extraction
             try:
@@ -295,7 +307,7 @@ def get_yt_data(urls_list):
                 )
                 mydb.commit()
             except sqlite3.IntegrityError:
-                pass
+                print("get_yt_data IntegrityError")
             urls_list_data[url] = (name, duration_minsec)
     mydb.close()
     return urls_list_data
@@ -342,6 +354,17 @@ def clean_url(url):
     elif "soundcloud.com" in url:
         url = url.split("?")[0]
         return url
+    elif "spotify.com" in url:
+        if "?" in url:
+            url = url.split("?")[0]
+        if "/track/" in url:
+            return url
+        elif "/playlist/" in url:
+            return url
+        elif "/album/" in url:
+            return url
+        else:
+            return None
     else:
         return None
 
@@ -353,6 +376,9 @@ def isplaylist(url):
             return True
     elif "soundcloud.com" in url:
         if "sets/" in url:
+            return True
+    elif "spotify.com" in url:
+        if "/playlist/" in url or "/album/" in url:
             return True
     return False
 
@@ -385,7 +411,68 @@ def get_arr_from_playlist(url):
                 .split("\n")
             )
         return scplaylist
+    elif "spotify.com" in url:
+        # get names of songs and format playlist to search://songname
+        if "/playlist/" in url or "/album/" in url:
+            response = urllib.request.urlopen(url)
+            html = response.read().decode()
+            songs = re.findall(r'<span class="ListRowTitle(.+?)</span>', html)
+            artists = re.findall(r'<p data-encore-id="type" id="listrow-subtitle-track-spotify(.+?)</p>', html)
+            spotifyplaylist = []
+            for i in range(len(songs)):
+                name = songs[i].split("\">")[1]
+                artist = artists[i].split("\">")[1]
+                spotifyplaylist.append(f"search://{name} {artist}")
+            return spotifyplaylist
     return None
+
+
+# takes normal url, returns direct file url
+# None if not supported
+def get_direct_url(url):
+    if "youtu.be" in url or "youtube.com" in url:
+        info = ytdl.extract_info(url, download=False)
+        for format in info["formats"]:
+            if format["format_id"] == "251":
+                return format["url"]
+    elif "soundcloud.com" in url:
+        info = ytdl.extract_info(url, download=False)
+        for format in info["formats"]:
+            if format["format_id"] == "http_mp3_128":
+                return format["url"]
+    elif url.startswith("search://"):
+        search = url.split("search://")[1]
+        search = SearchVideos(search + " lyric", offset=1, mode="json", max_results=1)
+        results = search.result()
+        evald_results = eval(results)
+        ytlink = evald_results["search_result"][0]["link"]
+        info = ytdl.extract_info(ytlink, download=False)
+        for format in info["formats"]:
+            if format["format_id"] == "251":
+                return format["url"]
+    return None
+
+
+# spotify needs to be searched on youtube
+def needs_search(url):
+    if "youtu.be" in url or "youtube.com" in url:
+        return False
+    elif "soundcloud.com" in url:
+        return False
+    else:
+        return True
+
+# get title from html
+def get_html_title(url):
+    response = urllib.request.urlopen(url)
+    html = response.read().decode()
+    if "spotify.com" in url:
+        song = re.findall(r'<title>(.+?) - song and lyrics by', html)
+        artist = re.findall(r'by (.+?) | Spotify</title>', html)
+        title = song[0] + " " + artist[0].strip(",")
+        return title
+    else:
+        return re.search(r'<title>(.+?)</title>', html).group(1)
 
 
 # Takes context, url, and optional message to edit
@@ -401,6 +488,9 @@ async def add_url(ctx, url, msg=None):
 
     # new clean_url isplaylist get_arr_from_playlist
     url = clean_url(url)
+    # TEMP
+    if "spotify.com" in url:
+        await ctx.send("Spotify support is super buggy!!!")
     if url is None:
         await ctx.send("Invalid url")
         return [None, None, None, None]
@@ -430,6 +520,8 @@ async def add_url(ctx, url, msg=None):
                 vidplist = True
             else:
                 url = url.split("&list=")[0]
+        if needs_search(url):
+            url = "search://" + get_html_title(url)
         add_to_playlist(ctx, url=url, arr=[])
         name = get_yt_data([url])[url][0]
         return [plist, vidplist, url, name]
@@ -545,14 +637,7 @@ async def play_audio(ctx):
 
             # gets url of audio stream
             if not moved:
-                info = ytdl.extract_info(url, download=False)
-                for format in info["formats"]:
-                    if (
-                        format["format_id"] == "251"
-                        or format["format_id"] == "http_mp3_128"
-                    ):  # youtube and soundcloud
-                        pureurl = format["url"]
-                        break
+                pureurl = get_direct_url(url)
 
             print(f"Url retrieve time taken: {time.time() - time1}")  # debug
 
@@ -825,7 +910,12 @@ async def play(ctx, *, search: str = None):
         )
         mydb.commit()
 
-    await msg.edit(content=f"Added [{name}](<{yturl}>) to queue")
+    temp_yturl = yturl
+    if yturl.startswith("search://"):
+        temp_yturl = f"https://www.youtube.com/results?search_query={yturl.split('search://')[1].replace(' ', '+')}"
+
+
+    await msg.edit(content=f"Added [{name}](<{temp_yturl}>) to queue")
 
     await ctx.message.add_reaction("👍")
     mydb.close()
@@ -983,6 +1073,8 @@ async def queue(ctx, num: str = "10"):
     title = yt_data[playlist[0]][0]
     duration_minsec = yt_data[playlist[0]][1]
     url = playlist[0]
+    if url.startswith("search://"):
+        url = f"https://www.youtube.com/results?search_query={url.split('search://')[1].replace(' ', '+')}+lyric"
     embed.add_field(
         value=f"> {ids[0]}. **[{title}]({url})** -- {duration_minsec}",
         inline=False,
@@ -993,6 +1085,8 @@ async def queue(ctx, num: str = "10"):
         title = yt_data[playlist[x]][0]
         duration_minsec = yt_data[playlist[x]][1]
         url = playlist[x]
+        if url.startswith("search://"):
+            url = f"https://www.youtube.com/results?search_query={url.split('search://')[1].replace(' ', '+')}+lyric"
         embed.add_field(
             value=f"\\> {x+1}. [{title}]({url}) -- {duration_minsec}",
             inline=False,

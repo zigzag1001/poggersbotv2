@@ -87,6 +87,9 @@ def get_yt_data(urls_list):
     for url in urls_list:
         if url in resultsdict:
             urls_list_data[url] = resultsdict[url]
+        elif url.startswith("search://"):
+            name = url.split("search://")[1]
+            urls_list_data[url] = (name, "search")
         else:
             name = None
             duration = None
@@ -255,6 +258,8 @@ def get_data():
             # thumbnail = os.popen(f"yt-dlp {x[1]} --get-thumbnail").read().strip()
             thumbnail = "https://i.imgur.com/8z2e0iM.png"
             thumbnail = "https://edm.com/.image/ar_1:1%2Cc_fill%2Ccs_srgb%2Cq_auto:good%2Cw_1200/MTcyMzYzNDExMzE5OTU3MjQx/soundcloud.png"
+        else:
+            thumbnail = "https://media.tenor.com/j0qPYTg9a94AAAAi/duck-ducky.gif"
         playlist.append(
             {
                 "id": x[0],
