@@ -446,6 +446,8 @@ def get_direct_url(url):
         results = search.result()
         evald_results = eval(results)
         ytlink = evald_results["search_result"][0]["link"]
+        yttitle = evald_results["search_result"][0]["title"]
+        print(colorize(yttitle, "green"), ytlink)
         info = ytdl.extract_info(ytlink, download=False)
         for format in info["formats"]:
             if format["format_id"] == "251":
