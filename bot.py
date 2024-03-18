@@ -366,7 +366,7 @@ def clean_url(url):
         else:
             return None
     else:
-        return None
+        return url
 
 
 # Takes url, returns True if it's a playlist
@@ -473,6 +473,10 @@ def get_html_title(url):
         artist = re.findall(r'by (.+?) | Spotify</title>', html)
         title = song[0] + " " + artist[0].strip(",")
         return title
+    elif "deezer.com" in url:
+        # ILLENIUM - Eyes Wide Shut: listen with lyrics | Deezer
+        song = re.findall(r'<title>(.+?): listen with lyrics | Deezer</title>', html)
+        return song[0]
     else:
         return re.search(r'<title>(.+?)</title>', html).group(1)
 
@@ -642,6 +646,9 @@ async def play_audio(ctx):
             # gets url of audio stream
             if not moved:
                 pureurl = get_direct_url(url)
+                if pureurl is None:
+                    await ctx.send(f"Error getting {url}")
+                    continue
 
             print(f"Url retrieve time taken: {time.time() - time1}")  # debug
 
