@@ -366,7 +366,7 @@ def clean_url(url):
         else:
             return None
     else:
-        return None
+        return url
 
 
 # Takes url, returns True if it's a playlist
@@ -446,6 +446,8 @@ def get_direct_url(url):
         results = search.result()
         evald_results = eval(results)
         ytlink = evald_results["search_result"][0]["link"]
+        yttitle = evald_results["search_result"][0]["title"]
+        print(colorize(yttitle, "green"), ytlink)
         info = ytdl.extract_info(ytlink, download=False)
         for format in info["formats"]:
             if format["format_id"] == "251":
@@ -471,6 +473,9 @@ def get_html_title(url):
         artist = re.findall(r'by (.+?) | Spotify</title>', html)
         title = song[0] + " " + artist[0].strip(",")
         return title
+    elif "deezer.com" in url:
+        song = re.findall(r'<title>(.+?): listen with lyrics | Deezer</title>', html)
+        return song[0]
     else:
         return re.search(r'<title>(.+?)</title>', html).group(1)
 
@@ -496,6 +501,8 @@ async def add_url(ctx, url, msg=None):
         return [None, None, None, None]
 
     if isplaylist(url):
+        if "spotify.com" in url:
+            await ctx.send("Spotify playlists only get the first 30 songs!!!")
         plist = True
         msgtext = "Adding playlist to queue...\n"
         await msg.edit(content=msgtext + "(yt-dlp query)")
@@ -536,7 +543,7 @@ async def add_url(ctx, url, msg=None):
 async def choose(ctx, choices, msg, time):
     result = -1
     channel = ctx.channel
-    if len(choices) > 10:
+    if len(choices) >= 10:
         await ctx.send("Internal error: Too many choices")
         return -1
     choices_nums = [str(x) for x in range(1, len(choices) + 1)]
@@ -594,6 +601,7 @@ async def play_audio(ctx):
     moved = False
     progresstime = 0
     pureurl = ""
+    errors = 0
 
     while is_connected(ctx):
         if is_playing(ctx):
@@ -638,6 +646,9 @@ async def play_audio(ctx):
             # gets url of audio stream
             if not moved:
                 pureurl = get_direct_url(url)
+                if pureurl is None:
+                    await ctx.send(f"Error getting {url}")
+                    continue
 
             print(f"Url retrieve time taken: {time.time() - time1}")  # debug
 
@@ -707,7 +718,9 @@ async def play_audio(ctx):
                         break
                 await asyncio.sleep(1)
             voice_client.stop()
+            errors = 0
         except Exception as e:
+            errors += 1
             print(
                 colorize(ctx.guild.name, "red"),
                 "\n",
@@ -725,6 +738,9 @@ async def play_audio(ctx):
             if len(e) > 2000:
                 e = e[:1900] + "(too long)..."
             await ctx.send(f"Error playing {url}\n```\n{e}```")
+            if errors >= 10:
+                await ctx.send("Too many errors, stopping")
+                await stop(None, ctx.guild)
         mydb = sqlite3.connect(db_name)
         mycursor = mydb.cursor()
         if not is_looping(ctx) and not moved:
@@ -781,7 +797,13 @@ async def on_voice_state_update(member, before, after):
         print(
             f"{colorize(member.guild.name, 'red')} - Bot force disconnected, leaving..."
         )
-        await stop(None, member.guild)
+        await asyncio.sleep(5)
+        if member not in bot_voice_channel.channel.members:
+            await stop(None, member.guild)
+        else:
+            print(
+                f"{colorize(member.guild.name, 'green')} - Nevermind! Bot rejoined, continuing..."
+            )
         return
 
 
