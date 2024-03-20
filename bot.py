@@ -6,6 +6,7 @@ import yt_dlp
 import asyncio
 import random
 import sqlite3
+import datetime
 from dotenv import load_dotenv
 from youtubesearchpython import SearchVideos
 
@@ -1410,6 +1411,17 @@ async def delete(ctx, num: str = "1"):
         )
         mydb.commit()
         await ctx.send(f"Deleted [{get_yt_data([url])[url][0]}](<{url}>) from queue")
+
+
+@bot.command(
+        name="cls",
+        help="Clears the bots messages from the last 5 hours",
+        )
+async def cls(ctx):
+    def is_bot(m):
+        return m.author == bot.user
+    deleted = await ctx.channel.purge(after=datetime.datetime.now() - datetime.timedelta(hours=5), check=is_bot)
+    await ctx.send(f"Deleted {len(deleted)} messages")
 
 
 bot.run(TOKEN)
