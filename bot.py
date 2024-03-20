@@ -1417,10 +1417,20 @@ async def delete(ctx, num: str = "1"):
         name="cls",
         help="Clears the bots messages from the last 5 hours",
         )
-async def cls(ctx):
+async def cls(ctx, hours: str = '5', limit: str = '1000'):
+    if not hours.isdigit():
+        await ctx.send("Invalid hours number")
+        return
+    if not limit.isdigit():
+        await ctx.send("Invalid message limit number")
+        return
+    hours = int(hours)
+    limit = int(limit)
+
     def is_bot(m):
         return m.author == bot.user
-    deleted = await ctx.channel.purge(after=datetime.datetime.now() - datetime.timedelta(hours=5), check=is_bot)
+
+    deleted = await ctx.channel.purge(limit=limit, after=datetime.datetime.now() - datetime.timedelta(hours=hours), check=is_bot)
     await ctx.send(f"Deleted {len(deleted)} messages")
 
 
