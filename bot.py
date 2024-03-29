@@ -1219,7 +1219,7 @@ async def loop(ctx):
     if not is_connected(ctx):
         await ctx.send("I am not connected to a voice channel")
         return
-    if ctx.message.content.lower().endswith("all"):
+    if ctx.message.content.lower().endswith("all") or ctx.message.content.lower().endswith("queue"):
         await loopall(ctx)
         return
     mydb = sqlite3.connect(db_name)
