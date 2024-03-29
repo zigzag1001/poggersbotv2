@@ -436,6 +436,10 @@ def get_direct_url(url):
         for format in info["formats"]:
             if format["format_id"] == "251":
                 return format["url"]
+        if "233" in [x["format_id"] for x in info["formats"]]:
+            for format in info["formats"]:
+                if format["format_id"] == "233":
+                    return format["url"]
     elif "soundcloud.com" in url:
         info = ytdl.extract_info(url, download=False)
         for format in info["formats"]:
@@ -649,6 +653,8 @@ async def play_audio(ctx):
                 pureurl = get_direct_url(url)
                 if pureurl is None:
                     await ctx.send(f"Error getting {url}")
+                    print(f"{colorize(ctx.guild.name, 'red')} - Error getting {url}")
+                    errors += 1
                     continue
 
             print(f"Url retrieve time taken: {time.time() - time1}")  # debug
