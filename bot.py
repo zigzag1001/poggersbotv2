@@ -655,6 +655,9 @@ async def play_audio(ctx):
                     await ctx.send(f"Error getting {url}")
                     print(f"{colorize(ctx.guild.name, 'red')} - Error getting {url}")
                     errors += 1
+                    if errors >= 10:
+                        await ctx.send("Too many errors, stopping")
+                        await stop(None, ctx.guild)
                     continue
 
             print(f"Url retrieve time taken: {time.time() - time1}")  # debug
