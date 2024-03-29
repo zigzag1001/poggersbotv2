@@ -436,6 +436,10 @@ def get_direct_url(url):
         for format in info["formats"]:
             if format["format_id"] == "251":
                 return format["url"]
+        if "233" in [x["format_id"] for x in info["formats"]]:
+            for format in info["formats"]:
+                if format["format_id"] == "233":
+                    return format["url"]
     elif "soundcloud.com" in url:
         info = ytdl.extract_info(url, download=False)
         for format in info["formats"]:
@@ -649,6 +653,11 @@ async def play_audio(ctx):
                 pureurl = get_direct_url(url)
                 if pureurl is None:
                     await ctx.send(f"Error getting {url}")
+                    print(f"{colorize(ctx.guild.name, 'red')} - Error getting {url}")
+                    errors += 1
+                    if errors >= 10:
+                        await ctx.send("Too many errors, stopping")
+                        await stop(None, ctx.guild)
                     continue
 
             print(f"Url retrieve time taken: {time.time() - time1}")  # debug
@@ -1219,7 +1228,7 @@ async def loop(ctx):
     if not is_connected(ctx):
         await ctx.send("I am not connected to a voice channel")
         return
-    if ctx.message.content.lower().endswith("all"):
+    if ctx.message.content.lower().endswith("all") or ctx.message.content.lower().endswith("queue"):
         await loopall(ctx)
         return
     mydb = sqlite3.connect(db_name)
@@ -1424,7 +1433,7 @@ async def cls(ctx, hours: str = '1', limit: str = '100'):
     if not limit.isdigit():
         await ctx.send("Invalid message limit number")
         return
-    elif int(limit) < 100:
+    if int(limit) < 100:
         await ctx.send("Limit must be greater than 100")
         return
     hours = int(hours)
@@ -1433,8 +1442,12 @@ async def cls(ctx, hours: str = '1', limit: str = '100'):
     def is_bot(m):
         return m.author == bot.user
 
+    await ctx.message.add_reaction("👍")
+
+    time1 = time.time()
+
     deleted = await ctx.channel.purge(limit=limit, after=datetime.datetime.now() - datetime.timedelta(hours=hours), check=is_bot)
-    await ctx.send(f"Deleted {len(deleted)} messages")
+    await ctx.send(f"Deleted {len(deleted)} messages in {time.time() - time1} seconds")
 
 
 bot.run(TOKEN)
