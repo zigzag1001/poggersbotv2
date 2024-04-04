@@ -238,6 +238,10 @@ def get_yt_data(urls_list):
                 html = response.read().decode()
             except urllib.error.HTTPError:
                 print(colorize("HTTPError", "red"), url)
+            except Exception as e:
+                print(colorize("Error", "red"), url)
+                print(e)
+                html = None
             if "youtu.be" in url or "youtube.com" in url:
                 name = (
                     re.search(r"<title>(.*?)</title>", html)
