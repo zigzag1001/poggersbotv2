@@ -232,11 +232,12 @@ def get_yt_data(urls_list):
             urls_list_data[url] = (name, duration)
         else:
             # html extraction
+            html = None
             try:
                 response = urllib.request.urlopen(url)
                 html = response.read().decode()
             except urllib.error.HTTPError:
-                print("HTTPError", url)
+                print(colorize("HTTPError", "red"), url)
             if "youtu.be" in url or "youtube.com" in url:
                 name = (
                     re.search(r"<title>(.*?)</title>", html)
@@ -277,6 +278,12 @@ def get_yt_data(urls_list):
                 print(
                     f"Soundcloud name duration time taken: {time.time() - time1}"
                 )  # debug
+            elif html is not None and "<title>" in html:
+                name = re.search(r"<title>(.*?)</title>", html).group(1)
+                duration = None
+            elif any(url.split("?")[0].endswith(x) for x in [".mp3", ".wav", ".flac", ".m4a", ".ogg", ".webm"]):
+                name = url.split("/")[-1].split("?")[0]
+                duration = None
             else:
                 print("Not a valid url")
                 name = "Invalid url"
@@ -457,6 +464,8 @@ def get_direct_url(url):
         for format in info["formats"]:
             if format["format_id"] == "251":
                 return format["url"]
+    elif any(url.split("?")[0].endswith(x) for x in [".mp3", ".wav", ".flac", ".m4a", ".ogg", ".webm"]):
+        return url
     return None
 
 
@@ -466,7 +475,10 @@ def needs_search(url):
         return False
     elif "soundcloud.com" in url:
         return False
+    elif any(url.split("?")[0].endswith(x) for x in [".mp3", ".wav", ".flac", ".m4a", ".ogg", ".webm"]):
+        return False
     else:
+        print("Needs search")
         return True
 
 # get title from html
@@ -833,6 +845,10 @@ async def play(ctx, *, search: str = None):
     if not is_user_connected(ctx):
         await ctx.send("You are not connected to a voice channel")
         return
+    if ctx.message.attachments:
+        url = ctx.message.attachments[0].url
+        print(url)
+        search = url
     if search is None:
         await skip(ctx)
         if not is_playing(ctx):
@@ -843,13 +859,7 @@ async def play(ctx, *, search: str = None):
         playnext = True
 
     # Check if search is a url using regex
-    protocol = r"(https:\/\/www\.|http:\/\/www\.|https:\/\/|http:\/\/)?"
-    domain = r"[a-zA-Z]{2,}(\.[a-zA-Z]{2,})(\.[a-zA-Z]{2,})?"
-    path = r"\/[a-zA-Z0-9]{2,}"
-    subdomain = r"((https:\/\/www\.|http:\/\/www\.|https:\/\/|http:\/\/)?[a-zA-Z]{2,}(\.[a-zA-Z]{2,})(\.[a-zA-Z]{2,})?)"
-    ip_domain = r"(https:\/\/www\.|http:\/\/www\.|https:\/\/|http:\/\/)?[a-zA-Z0-9]{2,}\.[a-zA-Z0-9]{2,}\.[a-zA-Z0-9]{2,}(\.[a-zA-Z0-9]{2,})?"
-
-    final_regex = re.compile(f"{protocol}({domain}{path}|{subdomain}|{ip_domain})")
+    regex = r"(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"
     vidplist = False
     plist = False
 
@@ -861,7 +871,7 @@ async def play(ctx, *, search: str = None):
         urlsearch = search.split(" ")[0]
 
     # If search is a url
-    if re.match(final_regex, urlsearch):
+    if re.match(regex, urlsearch):
         msg = await ctx.send("Adding to queue...")
         url_data = await add_url(ctx, urlsearch, msg)
         if url_data[0] is None:
@@ -1044,6 +1054,15 @@ async def skip(ctx, num: int = 1):
         mydb.commit()
         mydb.close()
         await ctx.send(f"Skipped to song +{num}")
+    if is_looping(ctx):
+        mydb = sqlite3.connect(db_name)
+        mycursor = mydb.cursor()
+        mycursor.execute(
+                "DELETE FROM playlist WHERE guild = ? ORDER BY id LIMIT 1",
+                (ctx.guild.id,)
+        )
+        mydb.commit()
+        mydb.close()
     voice_client = ctx.message.guild.voice_client
     # skips by stopping current audio, play_audio will handle the rest
     voice_client.stop()
