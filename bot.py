@@ -238,7 +238,8 @@ def get_yt_data(urls_list):
                 html = response.read().decode()
             except urllib.error.HTTPError:
                 print(colorize("HTTPError", "red"), url)
-            except Exception as e:
+                html = None
+            except Exception as e: # should be UnicodeDecodeError
                 print(colorize("Error", "red"), url)
                 print(e)
                 html = None
@@ -841,7 +842,7 @@ async def on_voice_state_update(member, before, after):
 @bot.command(
     name="play",
     help="Adds a song to queue, can be url or search term",
-    aliases=["p", "search"],
+    aliases=["p", "search", "Play", "P", "Search"],
 )
 async def play(ctx, *, search: str = None):
     ytplaylist = []
@@ -1019,7 +1020,7 @@ async def stop(ctx, guild=None):
     await voice_client.disconnect()
 
 
-@bot.command(name="clear", help="Clears the queue", aliases=["c"])
+@bot.command(name="clear", help="Clears the queue", aliases=["c", "cl", "C"])
 async def clear(ctx):
     if not is_user_connected(ctx):
         await ctx.send("You are not connected to a voice channel")
@@ -1037,7 +1038,7 @@ async def clear(ctx):
     await ctx.message.add_reaction("👍")
 
 
-@bot.command(name="skip", help="Skips current song", aliases=["next", "s"])
+@bot.command(name="skip", help="Skips current song", aliases=["next", "s", "S"])
 async def skip(ctx, num: int = 1):
     if not is_user_connected(ctx):
         await ctx.send("You are not connected to a voice channel")
@@ -1073,7 +1074,7 @@ async def skip(ctx, num: int = 1):
     await ctx.message.add_reaction("👍")
 
 
-@bot.command(name="queue", help="Shows the current queue", aliases=["q"])
+@bot.command(name="queue", help="Shows the current queue", aliases=["q", "list", "Q"])
 async def queue(ctx, num: str = "10"):
     if not is_user_connected(ctx):
         await ctx.send("You are not connected to a voice channel")
@@ -1160,7 +1161,7 @@ async def queue(ctx, num: str = "10"):
 
 
 @bot.command(
-    name="nowplaying", help="Shows the currently playing song", aliases=["np", "now"]
+    name="nowplaying", help="Shows the currently playing song", aliases=["np", "now", "Np"]
 )
 async def nowplaying(ctx):
     if not is_user_connected(ctx):
@@ -1173,7 +1174,7 @@ async def nowplaying(ctx):
 
 
 @bot.command(
-    name="shuffle", help="Shuffles the queue or provided playlist", aliases=["sh"]
+    name="shuffle", help="Shuffles the queue or provided playlist", aliases=["sh", "Sh"]
 )
 async def shuffle(ctx, ytpurl=None):
     if not is_user_connected(ctx):
@@ -1243,7 +1244,7 @@ async def shuffle(ctx, ytpurl=None):
         await play_audio(ctx)
 
 
-@bot.command(name="loop", help="Loops the current song", aliases=["l"])
+@bot.command(name="loop", help="Loops the current song", aliases=["l", "Loop", "L"])
 async def loop(ctx):
     if not is_user_connected(ctx):
         await ctx.send("You are not connected to a voice channel")
@@ -1273,7 +1274,7 @@ async def loop(ctx):
     mydb.close()
 
 
-@bot.command(name="web", help="Shows the web interface link", aliases=["website", "w"])
+@bot.command(name="web", help="Shows the web interface link", aliases=["website", "w", "W"])
 async def web(ctx, msg=""):
     baseurl = os.getenv("BASE_URL").strip("/")
     await ctx.send(msg + baseurl + "/?guild=" + str(ctx.guild.id))
@@ -1367,7 +1368,7 @@ async def ss(ctx, time=None):
 @bot.command(
     name="pn",
     help="Just like play, but places song next",
-    aliases=["playnext", "pnext"],
+    aliases=["playnext", "pnext", "Pn"],
 )
 async def pn(ctx, *, search: str = None):
     search = search + "-pn!"  # janky but cant add arguments to play command
