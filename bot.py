@@ -238,8 +238,7 @@ def get_yt_data(urls_list):
                 html = response.read().decode()
             except urllib.error.HTTPError:
                 print(colorize("HTTPError", "red"), url)
-                html = None
-            except Exception as e: # should be UnicodeDecodeError
+            except Exception as e:
                 print(colorize("Error", "red"), url)
                 print(e)
                 html = None
@@ -429,12 +428,12 @@ def get_arr_from_playlist(url):
         if "/playlist/" in url or "/album/" in url:
             response = urllib.request.urlopen(url)
             html = response.read().decode()
-            songs = re.findall(r'<span class="ListRowTitle(.+?)</span>', html)
-            artists = re.findall(r'<p data-encore-id="type" id="listrow-subtitle-track-spotify(.+?)</p>', html)
+            songs = re.findall(r"https://open.spotify.com/track/\w+", html)
             spotifyplaylist = []
             for i in range(len(songs)):
-                name = songs[i].split("\">")[1]
-                artist = artists[i].split("\">")[1]
+                html_title = get_html_title(songs[i])
+                name = html_title.split(" - ")[0]
+                artist = html_title.split(" - ")[1]
                 spotifyplaylist.append(f"search://{name} {artist}")
             return spotifyplaylist
     return None
@@ -459,11 +458,13 @@ def get_direct_url(url):
                 return format["url"]
     elif url.startswith("search://"):
         search = url.split("search://")[1]
+        search = ''.join(e for e in search if e.isalnum() or e.isspace())
         search = SearchVideos(search + " lyric", offset=1, mode="json", max_results=1)
         results = search.result()
         evald_results = eval(results)
         ytlink = evald_results["search_result"][0]["link"]
         yttitle = evald_results["search_result"][0]["title"]
+        yttitle = ''.join(e for e in yttitle if e.isalnum() or e.isspace())
         print(colorize(yttitle, "green"), ytlink)
         info = ytdl.extract_info(ytlink, download=False)
         for format in info["formats"]:
@@ -491,9 +492,9 @@ def get_html_title(url):
     response = urllib.request.urlopen(url)
     html = response.read().decode()
     if "spotify.com" in url:
-        song = re.findall(r'<title>(.+?) - song and lyrics by', html)
+        song = re.findall(r'<title>(.+?) -', html)
         artist = re.findall(r'by (.+?) | Spotify</title>', html)
-        title = song[0] + " " + artist[0].strip(",")
+        title = song[0] + " - " + artist[0].strip(",")
         return title
     elif "deezer.com" in url:
         song = re.findall(r'<title>(.+?): listen with lyrics | Deezer</title>', html)
@@ -842,7 +843,7 @@ async def on_voice_state_update(member, before, after):
 @bot.command(
     name="play",
     help="Adds a song to queue, can be url or search term",
-    aliases=["p", "search", "Play", "P", "Search"],
+    aliases=["p", "search"],
 )
 async def play(ctx, *, search: str = None):
     ytplaylist = []
@@ -1020,7 +1021,7 @@ async def stop(ctx, guild=None):
     await voice_client.disconnect()
 
 
-@bot.command(name="clear", help="Clears the queue", aliases=["c", "cl", "C"])
+@bot.command(name="clear", help="Clears the queue", aliases=["c"])
 async def clear(ctx):
     if not is_user_connected(ctx):
         await ctx.send("You are not connected to a voice channel")
@@ -1038,7 +1039,7 @@ async def clear(ctx):
     await ctx.message.add_reaction("👍")
 
 
-@bot.command(name="skip", help="Skips current song", aliases=["next", "s", "S"])
+@bot.command(name="skip", help="Skips current song", aliases=["next", "s"])
 async def skip(ctx, num: int = 1):
     if not is_user_connected(ctx):
         await ctx.send("You are not connected to a voice channel")
@@ -1074,7 +1075,7 @@ async def skip(ctx, num: int = 1):
     await ctx.message.add_reaction("👍")
 
 
-@bot.command(name="queue", help="Shows the current queue", aliases=["q", "list", "Q"])
+@bot.command(name="queue", help="Shows the current queue", aliases=["q"])
 async def queue(ctx, num: str = "10"):
     if not is_user_connected(ctx):
         await ctx.send("You are not connected to a voice channel")
@@ -1161,7 +1162,7 @@ async def queue(ctx, num: str = "10"):
 
 
 @bot.command(
-    name="nowplaying", help="Shows the currently playing song", aliases=["np", "now", "Np"]
+    name="nowplaying", help="Shows the currently playing song", aliases=["np", "now"]
 )
 async def nowplaying(ctx):
     if not is_user_connected(ctx):
@@ -1174,7 +1175,7 @@ async def nowplaying(ctx):
 
 
 @bot.command(
-    name="shuffle", help="Shuffles the queue or provided playlist", aliases=["sh", "Sh"]
+    name="shuffle", help="Shuffles the queue or provided playlist", aliases=["sh"]
 )
 async def shuffle(ctx, ytpurl=None):
     if not is_user_connected(ctx):
@@ -1244,7 +1245,7 @@ async def shuffle(ctx, ytpurl=None):
         await play_audio(ctx)
 
 
-@bot.command(name="loop", help="Loops the current song", aliases=["l", "Loop", "L"])
+@bot.command(name="loop", help="Loops the current song", aliases=["l"])
 async def loop(ctx):
     if not is_user_connected(ctx):
         await ctx.send("You are not connected to a voice channel")
@@ -1274,7 +1275,7 @@ async def loop(ctx):
     mydb.close()
 
 
-@bot.command(name="web", help="Shows the web interface link", aliases=["website", "w", "W"])
+@bot.command(name="web", help="Shows the web interface link", aliases=["website", "w"])
 async def web(ctx, msg=""):
     baseurl = os.getenv("BASE_URL").strip("/")
     await ctx.send(msg + baseurl + "/?guild=" + str(ctx.guild.id))
@@ -1368,7 +1369,7 @@ async def ss(ctx, time=None):
 @bot.command(
     name="pn",
     help="Just like play, but places song next",
-    aliases=["playnext", "pnext", "Pn"],
+    aliases=["playnext", "pnext"],
 )
 async def pn(ctx, *, search: str = None):
     search = search + "-pn!"  # janky but cant add arguments to play command
