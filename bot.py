@@ -428,12 +428,12 @@ def get_arr_from_playlist(url):
         if "/playlist/" in url or "/album/" in url:
             response = urllib.request.urlopen(url)
             html = response.read().decode()
-            songs = re.findall(r'<span class="ListRowTitle(.+?)</span>', html)
-            artists = re.findall(r'<p data-encore-id="type" id="listrow-subtitle-track-spotify(.+?)</p>', html)
+            songs = re.findall(r"https://open.spotify.com/track/\w+", html)
             spotifyplaylist = []
             for i in range(len(songs)):
-                name = songs[i].split("\">")[1]
-                artist = artists[i].split("\">")[1]
+                html_title = get_html_title(songs[i])
+                name = html_title.split(" - ")[0]
+                artist = html_title.split(" - ")[1]
                 spotifyplaylist.append(f"search://{name} {artist}")
             return spotifyplaylist
     return None
@@ -458,11 +458,13 @@ def get_direct_url(url):
                 return format["url"]
     elif url.startswith("search://"):
         search = url.split("search://")[1]
+        search = ''.join(e for e in search if e.isalnum() or e.isspace())
         search = SearchVideos(search + " lyric", offset=1, mode="json", max_results=1)
         results = search.result()
         evald_results = eval(results)
         ytlink = evald_results["search_result"][0]["link"]
         yttitle = evald_results["search_result"][0]["title"]
+        yttitle = ''.join(e for e in yttitle if e.isalnum() or e.isspace())
         print(colorize(yttitle, "green"), ytlink)
         info = ytdl.extract_info(ytlink, download=False)
         for format in info["formats"]:
@@ -490,9 +492,9 @@ def get_html_title(url):
     response = urllib.request.urlopen(url)
     html = response.read().decode()
     if "spotify.com" in url:
-        song = re.findall(r'<title>(.+?) - song and lyrics by', html)
+        song = re.findall(r'<title>(.+?) -', html)
         artist = re.findall(r'by (.+?) | Spotify</title>', html)
-        title = song[0] + " " + artist[0].strip(",")
+        title = song[0] + " - " + artist[0].strip(",")
         return title
     elif "deezer.com" in url:
         song = re.findall(r'<title>(.+?): listen with lyrics | Deezer</title>', html)
