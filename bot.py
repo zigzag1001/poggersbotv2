@@ -218,6 +218,7 @@ def get_yt_data(urls_list):
                     (resultsdict[url][0], resultsdict[url][1], url),
                 )
             urls_list_data[url] = resultsdict[url]
+            print(f"get_yt_data Found in cache: {resultsdict[url]}")
         elif url.startswith("search://"):
             name = url.split("search://")[1]
             duration = "0:00"
@@ -959,6 +960,7 @@ async def play(ctx, *, search: str = None):
 
     temp_yturl = yturl
     if yturl.startswith("search://"):
+        yturl = ''.join(e for e in yturl if e.isalnum() or e.isspace())
         temp_yturl = f"https://www.youtube.com/results?search_query={yturl.split('search://')[1].replace(' ', '+')}"
 
 
@@ -1242,6 +1244,7 @@ async def shuffle(ctx, ytpurl=None):
 
     await ctx.message.add_reaction("👍")
     await msg.edit(content="Shuffled...")
+    asyncio.create_task(queue(ctx))
     await msg.delete()
     if not is_connected(ctx) and ytpurl is not None:
         await play_audio(ctx)
