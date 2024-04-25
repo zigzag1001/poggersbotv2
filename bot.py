@@ -284,7 +284,7 @@ def get_yt_data(urls_list):
                     f"Soundcloud name duration time taken: {time.time() - time1}"
                 )  # debug
             elif html is not None and "<title>" in html:
-                name = re.search(r"<title>(.*?)</title>", html).group(1)
+                name = get_html_title(url, html)
                 duration = None
             elif any(url.split("?")[0].endswith(x) for x in [".mp3", ".wav", ".flac", ".m4a", ".ogg", ".webm"]):
                 name = url.split("/")[-1].split("?")[0]
@@ -431,11 +431,8 @@ def get_arr_from_playlist(url):
             html = response.read().decode()
             songs = re.findall(r"https://open.spotify.com/track/\w+", html)
             spotifyplaylist = []
-            for i in range(len(songs)):
-                html_title = get_html_title(songs[i])
-                name = html_title.split(" - ")[0]
-                artist = html_title.split(" - ")[1]
-                spotifyplaylist.append(f"search://{name} {artist}")
+            for song in songs:
+                spotifyplaylist.append(song)
             return spotifyplaylist
     return None
 
@@ -473,6 +470,8 @@ def get_direct_url(url):
                 return format["url"]
     elif any(url.split("?")[0].endswith(x) for x in [".mp3", ".wav", ".flac", ".m4a", ".ogg", ".webm"]):
         return url
+    else:
+        return get_direct_url("search://" + get_html_title(url))
     return None
 
 
@@ -489,9 +488,10 @@ def needs_search(url):
         return True
 
 # get title from html
-def get_html_title(url):
-    response = urllib.request.urlopen(url)
-    html = response.read().decode()
+def get_html_title(url, html=None):
+    if html is None:
+        response = urllib.request.urlopen(url)
+        html = response.read().decode()
     if "spotify.com" in url:
         song = re.findall(r'<title>(.+?) -', html)
         artist = re.findall(r'by (.+?) | Spotify</title>', html)
@@ -551,8 +551,6 @@ async def add_url(ctx, url, msg=None):
                 vidplist = True
             else:
                 url = url.split("&list=")[0]
-        if needs_search(url):
-            url = "search://" + get_html_title(url)
         add_to_playlist(ctx, url=url, arr=[])
         name = get_yt_data([url])[url][0]
         return [plist, vidplist, url, name]
@@ -1133,6 +1131,8 @@ async def queue(ctx, num: str = "10"):
     url = playlist[0]
     if url.startswith("search://"):
         url = f"https://www.youtube.com/results?search_query={url.split('search://')[1].replace(' ', '+')}+lyric"
+    elif url.startswith("https://open.spotify.com/track/"):
+        url = f"https://www.youtube.com/results?search_query={title.replace(' ', '+')}+lyric"
     embed.add_field(
         value=f"> {ids[0]}. **[{title}]({url})** -- {duration_minsec}",
         inline=False,
@@ -1145,6 +1145,8 @@ async def queue(ctx, num: str = "10"):
         url = playlist[x]
         if url.startswith("search://"):
             url = f"https://www.youtube.com/results?search_query={url.split('search://')[1].replace(' ', '+')}+lyric"
+        elif url.startswith("https://open.spotify.com/track/"):
+            url = f"https://www.youtube.com/results?search_query={title.replace(' ', '+')}+lyric"
         embed.add_field(
             value=f"\\> {x+1}. [{title}]({url}) -- {duration_minsec}",
             inline=False,
@@ -1240,7 +1242,6 @@ async def shuffle(ctx, ytpurl=None):
 
     await ctx.message.add_reaction("👍")
     await msg.edit(content="Shuffled...")
-    await queue(ctx)
     await msg.delete()
     if not is_connected(ctx) and ytpurl is not None:
         await play_audio(ctx)
