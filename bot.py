@@ -999,7 +999,12 @@ async def play(ctx, *, search: str = None):
 
             await ctx.send(f"Added {len(ytplaylist)} songs to queue...")
     if not is_connected(ctx):
-        await play_audio(ctx)
+        try:
+            await play_audio(ctx)
+        except Exception as e:
+            print(f"{colorize(ctx.guild.name, 'red')} - Error playing audio: {e}")
+            await ctx.send("Error playing audio")
+            await stop(None, ctx.guild)
 
 
 @bot.command(
