@@ -350,6 +350,11 @@ def clean_url(url):
             if "?" in vidid:
                 vidid = vidid.split("?")[0]
             video = True
+        elif "/shorts/" in url:
+            vidid = url.split("/shorts/")[1]
+            if "?" in vidid:
+                vidid = vidid.split("?")[0]
+            video = True
 
         if "list=" in url:
             plistid = url.split("list=")[1]
