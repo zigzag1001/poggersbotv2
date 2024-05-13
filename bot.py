@@ -611,6 +611,10 @@ async def play_audio(ctx):
     if is_playing(ctx):
         print("Already playing, returning")  # debug
         return
+    if ctx.author.voice.channel.permissions_for(ctx.guild.me).connect is False:
+        print(colorize(ctx.guild.name, "red"), f"- No permission to connect to {ctx.author.voice.channel.name}")
+        await ctx.send(f"ERROR - \"{ctx.author.voice.channel.name}\" - is either private or bot dosent have permissions for it")
+        return
     five_times = 0  # For checking if bot is inactive
     mydb = sqlite3.connect(db_name)
     mycursor = mydb.cursor()
@@ -999,7 +1003,12 @@ async def play(ctx, *, search: str = None):
 
             await ctx.send(f"Added {len(ytplaylist)} songs to queue...")
     if not is_connected(ctx):
-        await play_audio(ctx)
+        try:
+            await play_audio(ctx)
+        except Exception as e:
+            print(f"{colorize(ctx.guild.name, 'red')} - Error playing audio: {e}")
+            await ctx.send("Error playing audio")
+            await stop(None, ctx.guild)
 
 
 @bot.command(
