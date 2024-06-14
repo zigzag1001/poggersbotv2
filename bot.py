@@ -234,25 +234,25 @@ def get_yt_data(urls_list):
             urls_list_data[url] = (name, duration)
         else:
             # html extraction
-            html = None
+            html_res = None
             try:
                 response = urllib.request.urlopen(url)
-                html = response.read().decode()
+                html_res = response.read().decode()
             except urllib.error.HTTPError:
                 print(colorize("HTTPError", "red"), url)
-                html = None
+                html_res = None
             except Exception as e:
                 print(colorize("Error", "red"), url)
                 print(e)
-                html = None
+                html_res = None
             if "youtu.be" in url or "youtube.com" in url:
                 name = (
-                    re.search(r"<title>(.*?)</title>", html)
+                    re.search(r"<title>(.*?)</title>", html_res)
                     .group(1)
                     .split(" - YouTube")[0]
                 )
                 try:
-                    duration = re.search(r'"lengthSeconds":"(.*?)"', html).group(1)
+                    duration = re.search(r'"lengthSeconds":"(.*?)"', html_res).group(1)
                 except AttributeError:
                     duration = None
             elif "soundcloud.com" in url:
@@ -271,11 +271,11 @@ def get_yt_data(urls_list):
                     duration = str(min * 60 + sec)
                 else:
                     name = re.search(
-                        r'<meta property="og:title" content="(.*?)">', html
+                        r'<meta property="og:title" content="(.*?)">', html_res
                     ).group(1)
                     try:
                         duration = re.search(
-                            r'<span aria-hidden="true">(\d+):(\d+)</span>', html
+                            r'<span aria-hidden="true">(\d+):(\d+)</span>', html_res
                         )
                         mins = int(duration.group(1))
                         secs = int(duration.group(2))
@@ -285,8 +285,8 @@ def get_yt_data(urls_list):
                 print(
                     f"Soundcloud name duration time taken: {time.time() - time1}"
                 )  # debug
-            elif html is not None and "<title>" in html:
-                name = get_html_title(url, html)
+            elif html_res is not None and "<title>" in html_res:
+                name = get_html_title(url, html_res)
                 duration = None
             elif any(url.split("?")[0].endswith(x) for x in [".mp3", ".wav", ".flac", ".m4a", ".ogg", ".webm"]):
                 name = url.split("/")[-1].split("?")[0]
@@ -435,8 +435,8 @@ def get_arr_from_playlist(url):
         # get names of songs and format playlist to search://songname
         if "/playlist/" in url or "/album/" in url:
             response = urllib.request.urlopen(url)
-            html = response.read().decode()
-            songs = re.findall(r"https://open.spotify.com/track/\w+", html)
+            html_res = response.read().decode()
+            songs = re.findall(r"https://open.spotify.com/track/\w+", html_res)
             spotifyplaylist = []
             for song in songs:
                 spotifyplaylist.append(song)
