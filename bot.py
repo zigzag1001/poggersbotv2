@@ -1,5 +1,6 @@
 import os
 import re
+import html
 import time
 import urllib
 import yt_dlp
@@ -494,20 +495,20 @@ def needs_search(url):
         return True
 
 # get title from html
-def get_html_title(url, html=None):
-    if html is None:
+def get_html_title(url, html_res=None):
+    if html_res is None:
         response = urllib.request.urlopen(url)
-        html = response.read().decode()
+        html_res = response.read().decode()
     if "spotify.com" in url:
-        song = re.findall(r'<title>(.+?) -', html)
-        artist = re.findall(r'by (.+?) | Spotify</title>', html)
-        title = song[0] + " - " + artist[0].strip(",")
+        song = html.unescape(re.findall(r'<title>(.+?) -', html_res)[0])
+        artist = html.unescape(re.findall(r'(?<=by\s)(.*?)(?=\s\|\sSpotify)', html_res)[0])
+        title = song + " - " + artist.strip(",")
         return title
     elif "deezer.com" in url:
-        song = re.findall(r'<title>(.+?): listen with lyrics | Deezer</title>', html)
+        song = re.findall(r'<title>(.+?): listen with lyrics | Deezer</title>', html_res)
         return song[0]
     else:
-        return re.search(r'<title>(.+?)</title>', html).group(1)
+        return re.search(r'<title>(.+?)</title>', html_res).group(1)
 
 
 # Takes context, url, and optional message to edit
