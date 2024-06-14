@@ -1,5 +1,6 @@
 import os
 import re
+import html
 import time
 import urllib
 import yt_dlp
@@ -233,25 +234,25 @@ def get_yt_data(urls_list):
             urls_list_data[url] = (name, duration)
         else:
             # html extraction
-            html = None
+            html_res = None
             try:
                 response = urllib.request.urlopen(url)
-                html = response.read().decode()
+                html_res = response.read().decode()
             except urllib.error.HTTPError:
                 print(colorize("HTTPError", "red"), url)
-                html = None
+                html_res = None
             except Exception as e:
                 print(colorize("Error", "red"), url)
                 print(e)
-                html = None
+                html_res = None
             if "youtu.be" in url or "youtube.com" in url:
                 name = (
-                    re.search(r"<title>(.*?)</title>", html)
+                    re.search(r"<title>(.*?)</title>", html_res)
                     .group(1)
                     .split(" - YouTube")[0]
                 )
                 try:
-                    duration = re.search(r'"lengthSeconds":"(.*?)"', html).group(1)
+                    duration = re.search(r'"lengthSeconds":"(.*?)"', html_res).group(1)
                 except AttributeError:
                     duration = None
             elif "soundcloud.com" in url:
@@ -270,11 +271,11 @@ def get_yt_data(urls_list):
                     duration = str(min * 60 + sec)
                 else:
                     name = re.search(
-                        r'<meta property="og:title" content="(.*?)">', html
+                        r'<meta property="og:title" content="(.*?)">', html_res
                     ).group(1)
                     try:
                         duration = re.search(
-                            r'<span aria-hidden="true">(\d+):(\d+)</span>', html
+                            r'<span aria-hidden="true">(\d+):(\d+)</span>', html_res
                         )
                         mins = int(duration.group(1))
                         secs = int(duration.group(2))
@@ -284,8 +285,8 @@ def get_yt_data(urls_list):
                 print(
                     f"Soundcloud name duration time taken: {time.time() - time1}"
                 )  # debug
-            elif html is not None and "<title>" in html:
-                name = get_html_title(url, html)
+            elif html_res is not None and "<title>" in html_res:
+                name = get_html_title(url, html_res)
                 duration = None
             elif any(url.split("?")[0].endswith(x) for x in [".mp3", ".wav", ".flac", ".m4a", ".ogg", ".webm"]):
                 name = url.split("/")[-1].split("?")[0]
@@ -434,8 +435,8 @@ def get_arr_from_playlist(url):
         # get names of songs and format playlist to search://songname
         if "/playlist/" in url or "/album/" in url:
             response = urllib.request.urlopen(url)
-            html = response.read().decode()
-            songs = re.findall(r"https://open.spotify.com/track/\w+", html)
+            html_res = response.read().decode()
+            songs = re.findall(r"https://open.spotify.com/track/\w+", html_res)
             spotifyplaylist = []
             for song in songs:
                 spotifyplaylist.append(song)
@@ -494,20 +495,20 @@ def needs_search(url):
         return True
 
 # get title from html
-def get_html_title(url, html=None):
-    if html is None:
+def get_html_title(url, html_res=None):
+    if html_res is None:
         response = urllib.request.urlopen(url)
-        html = response.read().decode()
+        html_res = response.read().decode()
     if "spotify.com" in url:
-        song = re.findall(r'<title>(.+?) -', html)
-        artist = re.findall(r'by (.+?) | Spotify</title>', html)
-        title = song[0] + " - " + artist[0].strip(",")
+        song = html.unescape(re.findall(r'<title>(.+?) -', html_res)[0])
+        artist = html.unescape(re.findall(r'(?<=by\s)(.*?)(?=\s\|\sSpotify)', html_res)[0])
+        title = song + " - " + artist.strip(",")
         return title
     elif "deezer.com" in url:
-        song = re.findall(r'<title>(.+?): listen with lyrics | Deezer</title>', html)
+        song = re.findall(r'<title>(.+?): listen with lyrics | Deezer</title>', html_res)
         return song[0]
     else:
-        return re.search(r'<title>(.+?)</title>', html).group(1)
+        return re.search(r'<title>(.+?)</title>', html_res).group(1)
 
 
 # Takes context, url, and optional message to edit
