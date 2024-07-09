@@ -210,10 +210,19 @@ def get_yt_data(urls_list):
     for url in urls_list:
         if url in resultsdict:
             # only needed since some data is cached but incorrect
-            if any(x in resultsdict[url][0] for x in ["&quot;", "&#39;", "&amp;"]) or resultsdict[url][0] == "":
+            if (
+                any(x in resultsdict[url][0] for x in ["&quot;", "&#39;", "&amp;"])
+                or resultsdict[url][0] == ""
+            ):
                 if resultsdict[url][0] == "":
                     resultsdict[url] = ("Unknown", resultsdict[url][1])
-                resultsdict[url] = (resultsdict[url][0].replace("&quot;", '"').replace("&#39;", "'").replace("&amp;", "&"), resultsdict[url][1])
+                resultsdict[url] = (
+                    resultsdict[url][0]
+                    .replace("&quot;", '"')
+                    .replace("&#39;", "'")
+                    .replace("&amp;", "&"),
+                    resultsdict[url][1],
+                )
                 mycursor.execute(
                     "UPDATE yt_data SET name = ?, duration = ? WHERE url = ?",
                     (resultsdict[url][0], resultsdict[url][1], url),
@@ -225,8 +234,8 @@ def get_yt_data(urls_list):
             duration = "0:00"
             try:
                 mycursor.execute(
-                        "INSERT INTO yt_data (url, name, duration) VALUES (?, ?, ?)",
-                        (url, name, duration),
+                    "INSERT INTO yt_data (url, name, duration) VALUES (?, ?, ?)",
+                    (url, name, duration),
                 )
                 mydb.commit()
             except sqlite3.IntegrityError:
@@ -288,7 +297,10 @@ def get_yt_data(urls_list):
             elif html_res is not None and "<title>" in html_res:
                 name = get_html_title(url, html_res)
                 duration = None
-            elif any(url.split("?")[0].endswith(x) for x in [".mp3", ".wav", ".flac", ".m4a", ".ogg", ".webm"]):
+            elif any(
+                url.split("?")[0].endswith(x)
+                for x in [".mp3", ".wav", ".flac", ".m4a", ".ogg", ".webm"]
+            ):
                 name = url.split("/")[-1].split("?")[0]
                 duration = None
             else:
@@ -299,7 +311,11 @@ def get_yt_data(urls_list):
             if name is None or name == "":
                 name = "Unknown"
             else:
-                name = name.replace("&quot;", '"').replace("&#39;", "'").replace("&amp;", "&")
+                name = (
+                    name.replace("&quot;", '"')
+                    .replace("&#39;", "'")
+                    .replace("&amp;", "&")
+                )
 
             # duration calculation
             if duration is None:
@@ -463,19 +479,22 @@ def get_direct_url(url):
                 return format["url"]
     elif url.startswith("search://"):
         search = url.split("search://")[1]
-        search = ''.join(e for e in search if e.isalnum() or e.isspace())
+        search = "".join(e for e in search if e.isalnum() or e.isspace())
         search = SearchVideos(search + " lyric", offset=1, mode="json", max_results=1)
         results = search.result()
         evald_results = eval(results)
         ytlink = evald_results["search_result"][0]["link"]
         yttitle = evald_results["search_result"][0]["title"]
-        yttitle = ''.join(e for e in yttitle if e.isalnum() or e.isspace())
+        yttitle = "".join(e for e in yttitle if e.isalnum() or e.isspace())
         print(colorize(yttitle, "green"), ytlink)
         info = ytdl.extract_info(ytlink, download=False)
         for format in info["formats"]:
             if format["format_id"] == "251":
                 return format["url"]
-    elif any(url.split("?")[0].endswith(x) for x in [".mp3", ".wav", ".flac", ".m4a", ".ogg", ".webm"]):
+    elif any(
+        url.split("?")[0].endswith(x)
+        for x in [".mp3", ".wav", ".flac", ".m4a", ".ogg", ".webm"]
+    ):
         return url
     else:
         return get_direct_url("search://" + get_html_title(url))
@@ -488,11 +507,15 @@ def needs_search(url):
         return False
     elif "soundcloud.com" in url:
         return False
-    elif any(url.split("?")[0].endswith(x) for x in [".mp3", ".wav", ".flac", ".m4a", ".ogg", ".webm"]):
+    elif any(
+        url.split("?")[0].endswith(x)
+        for x in [".mp3", ".wav", ".flac", ".m4a", ".ogg", ".webm"]
+    ):
         return False
     else:
         print("Needs search")
         return True
+
 
 # get title from html
 def get_html_title(url, html_res=None):
@@ -500,15 +523,19 @@ def get_html_title(url, html_res=None):
         response = urllib.request.urlopen(url)
         html_res = response.read().decode()
     if "spotify.com" in url:
-        song = html.unescape(re.findall(r'<title>(.+?) -', html_res)[0])
-        artist = html.unescape(re.findall(r'(?<=by\s)(.*?)(?=\s\|\sSpotify)', html_res)[0])
+        song = html.unescape(re.findall(r"<title>(.+?) -", html_res)[0])
+        artist = html.unescape(
+            re.findall(r"(?<=by\s)(.*?)(?=\s\|\sSpotify)", html_res)[0]
+        )
         title = song + " - " + artist.strip(",")
         return title
     elif "deezer.com" in url:
-        song = re.findall(r'<title>(.+?): listen with lyrics | Deezer</title>', html_res)
+        song = re.findall(
+            r"<title>(.+?): listen with lyrics | Deezer</title>", html_res
+        )
         return song[0]
     else:
-        return re.search(r'<title>(.+?)</title>', html_res).group(1)
+        return re.search(r"<title>(.+?)</title>", html_res).group(1)
 
 
 # Takes context, url, and optional message to edit
@@ -613,8 +640,13 @@ async def play_audio(ctx):
         print("Already playing, returning")  # debug
         return
     if ctx.author.voice.channel.permissions_for(ctx.guild.me).connect is False:
-        print(colorize(ctx.guild.name, "red"), f"- No permission to connect to {ctx.author.voice.channel.name}")
-        await ctx.send(f"ERROR - \"{ctx.author.voice.channel.name}\" - is either private or bot dosent have permissions for it")
+        print(
+            colorize(ctx.guild.name, "red"),
+            f"- No permission to connect to {ctx.author.voice.channel.name}",
+        )
+        await ctx.send(
+            f'ERROR - "{ctx.author.voice.channel.name}" - is either private or bot dosent have permissions for it'
+        )
         return
     five_times = 0  # For checking if bot is inactive
     mydb = sqlite3.connect(db_name)
@@ -682,6 +714,16 @@ async def play_audio(ctx):
                 if pureurl is None:
                     await ctx.send(f"Error getting {url}")
                     print(f"{colorize(ctx.guild.name, 'red')} - Error getting {url}")
+
+                    mydb = sqlite3.connect(db_name)
+                    mycursor = mydb.cursor()
+                    mycursor.execute(
+                        "DELETE FROM playlist WHERE url = ? AND guild = ? ORDER BY id LIMIT 1",
+                        (url, ctx.guild.id),
+                    )
+                    mydb.commit()
+                    mydb.close()
+
                     errors += 1
                     if errors >= 10:
                         await ctx.send("Too many errors, stopping")
@@ -918,7 +960,7 @@ async def play(ctx, *, search: str = None):
             msgtext += f'{x+1}. {info["search_result"][x]["title"]}\n'
         await smsg.edit(content=msgtext)
 
-        choices = [f"{x+1}\N{combining enclosing keycap}" for x in range(displaynum)]
+        choices = [f"{x+1}\N{COMBINING ENCLOSING KEYCAP}" for x in range(displaynum)]
         choices.append("❌")
 
         resultnum = await choose(ctx, choices, smsg, 10)
@@ -970,9 +1012,8 @@ async def play(ctx, *, search: str = None):
 
     temp_yturl = yturl
     if yturl.startswith("search://"):
-        yturl = ''.join(e for e in yturl if e.isalnum() or e.isspace())
+        yturl = "".join(e for e in yturl if e.isalnum() or e.isspace())
         temp_yturl = f"https://www.youtube.com/results?search_query={yturl.split('search://')[1].replace(' ', '+')}"
-
 
     await msg.edit(content=f"Added [{name}](<{temp_yturl}>) to queue")
 
@@ -1015,7 +1056,7 @@ async def play(ctx, *, search: str = None):
 @bot.command(
     name="stop",
     help="Stops playing audio, clear queue and disconnects bot",
-    aliases=["disconnect", "dc", "leave"]
+    aliases=["disconnect", "dc", "leave"],
 )
 async def stop(ctx, guild=None):
     if ctx is not None:
@@ -1080,8 +1121,7 @@ async def skip(ctx, num: int = 1):
         mydb = sqlite3.connect(db_name)
         mycursor = mydb.cursor()
         mycursor.execute(
-                "DELETE FROM playlist WHERE guild = ? ORDER BY id LIMIT 1",
-                (ctx.guild.id,)
+            "DELETE FROM playlist WHERE guild = ? ORDER BY id LIMIT 1", (ctx.guild.id,)
         )
         mydb.commit()
         mydb.close()
@@ -1182,7 +1222,9 @@ async def queue(ctx, num: str = "10"):
 
 
 @bot.command(
-    name="nowplaying", help="Shows the currently playing song", aliases=["np", "now", "Np"]
+    name="nowplaying",
+    help="Shows the currently playing song",
+    aliases=["np", "now", "Np"],
 )
 async def nowplaying(ctx):
     if not is_user_connected(ctx):
@@ -1273,7 +1315,9 @@ async def loop(ctx):
     if not is_connected(ctx):
         await ctx.send("I am not connected to a voice channel")
         return
-    if ctx.message.content.lower().endswith("all") or ctx.message.content.lower().endswith("queue"):
+    if ctx.message.content.lower().endswith(
+        "all"
+    ) or ctx.message.content.lower().endswith("queue"):
         await loopall(ctx)
         return
     mydb = sqlite3.connect(db_name)
@@ -1295,7 +1339,9 @@ async def loop(ctx):
     mydb.close()
 
 
-@bot.command(name="web", help="Shows the web interface link", aliases=["website", "w", "W"])
+@bot.command(
+    name="web", help="Shows the web interface link", aliases=["website", "w", "W"]
+)
 async def web(ctx, msg=""):
     baseurl = os.getenv("BASE_URL").strip("/")
     await ctx.send(msg + baseurl + "/?guild=" + str(ctx.guild.id))
@@ -1397,9 +1443,9 @@ async def pn(ctx, *, search: str = None):
 
 
 @bot.command(
-        name="loopall",
-        help="Loops the entire queue",
-        aliases=["la", "loopqueue"],
+    name="loopall",
+    help="Loops the entire queue",
+    aliases=["la", "loopqueue"],
 )
 async def loopall(ctx):
     if not is_user_connected(ctx):
@@ -1428,10 +1474,10 @@ async def loopall(ctx):
 
 
 @bot.command(
-        name="delete",
-        help="Deletes a song from the queue",
-        aliases=["del"],
-        )
+    name="delete",
+    help="Deletes a song from the queue",
+    aliases=["del"],
+)
 async def delete(ctx, num: str = "1"):
     if not is_user_connected(ctx):
         await ctx.send("You are not connected to a voice channel")
@@ -1468,10 +1514,10 @@ async def delete(ctx, num: str = "1"):
 
 
 @bot.command(
-        name="cls",
-        help="Clears the bots messages from the last 5 hours",
-        )
-async def cls(ctx, hours: str = '1', limit: str = '100'):
+    name="cls",
+    help="Clears the bots messages from the last 5 hours",
+)
+async def cls(ctx, hours: str = "1", limit: str = "100"):
     if not hours.isdigit():
         await ctx.send("Invalid hours number")
         return
@@ -1491,7 +1537,11 @@ async def cls(ctx, hours: str = '1', limit: str = '100'):
 
     time1 = time.time()
 
-    deleted = await ctx.channel.purge(limit=limit, after=datetime.datetime.now() - datetime.timedelta(hours=hours), check=is_bot)
+    deleted = await ctx.channel.purge(
+        limit=limit,
+        after=datetime.datetime.now() - datetime.timedelta(hours=hours),
+        check=is_bot,
+    )
     await ctx.send(f"Deleted {len(deleted)} messages in {time.time() - time1} seconds")
 
 
