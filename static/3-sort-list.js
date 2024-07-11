@@ -67,7 +67,7 @@ function slist(target) {
 const urlParams = new URLSearchParams(window.location.search);
 const guild = urlParams.get("guild");
 function fetchData() {
-    fetch("/get_data?guild=" + guild)
+    fetch("./get_data?guild=" + guild)
         .then((response) => response.json())
         .then((data) => {
             const playlist = data.playlist;
@@ -143,7 +143,7 @@ function fetchData() {
                     document.getElementById("background").style = "background-image: url(" + smallthumb + ");";
                 }
                 button1.addEventListener("click", async () => {
-                    const response = await fetch("/play_song", {
+                    const response = await fetch("./play_song", {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",
@@ -158,7 +158,7 @@ function fetchData() {
                     fetchData();
                 });
                 button3.addEventListener("click", async () => {
-                    const response = await fetch("/delete_song", {
+                    const response = await fetch("./delete_song", {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",
@@ -174,7 +174,7 @@ function fetchData() {
                 });
                 li.addEventListener("dragend", async () => {
                     const updatedListJSON = getUpdatedListJSON();
-                    const response = await fetch("/update_list", {
+                    const response = await fetch("./update_list", {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",

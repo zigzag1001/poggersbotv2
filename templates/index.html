@@ -1,379 +1,361 @@
 <!doctype html>
 <html>
-    <head>
-        <title id="title">Poggers Music Queue</title>
-        <!-- Load CSS + JS -->
-        <link
-            rel="stylesheet"
-            href="{{ url_for('static', filename='2-sort-list.css') }}"
-        />
-        <link
-            rel="icon"
-            type="image/x-icon"
-            href="{{ url_for('static', filename='favicon.ico') }}"
-        />
-        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-        <script src="{{ url_for('static', filename='3-sort-list.js') }}"></script>
-    </head>
-    <body id="body">
-        <div class="header">
-            <h1>Poggers Music Queue</h1>
-            <p>Drag and drop to sort the list.</p>
-        </div>
 
-        <div class="current">
-            <div class="firstimgcontainer"><img id="firstthumb" src="" /></div>
-            <div class="currenttitle" id="first"></div>
-            <div class="controls" id="second">
-                <button class="skip" id="skip">Skip</button>
-                <button class="shuffle" id="shuffle">Shuffle</button>
-                <button class="loop" id="loop">Loop</button>
-            </div>
-            <hr>
+<head>
+    <title id="title">Poggers Music Queue</title>
+    <!-- Load CSS + JS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='2-sort-list.css') }}" />
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{{ url_for('static', filename='3-sort-list.js') }}"></script>
+</head>
+
+<body id="body">
+    <div class="header">
+        <h1>Poggers Music Queue</h1>
+        <p>Drag and drop to sort the list.</p>
+    </div>
+
+    <div class="current">
+        <div class="firstimgcontainer"><img id="firstthumb" src="" /></div>
+        <div class="currenttitle" id="first"></div>
+        <div class="controls" id="second">
+            <button class="skip" id="skip">Skip</button>
+            <button class="shuffle" id="shuffle">Shuffle</button>
+            <button class="loop" id="loop">Loop</button>
         </div>
-        <div class="plcontainer">
-            <div class="upnext">
-                <h2>Up Next</h2>
-                <h3>____________________</h3>
-            </div>
-            <ul id="sortlist">
-                {% for song in playlist %}
-                <li>
-                    <div class="songnumber"></div>
-                    <img src="{{ song['thumbnail'] }}" />
-                    <div class="songtitle">{{ song['name'] }}</div>
-                    <div class="songbuttons">
-                        <button class="songplay" id="play">Play</button>
-                        <button class="songlink" id="link">Link</button>
-                        <button class="songdelete" id="delete">Delete</button>
-                    </div>
-                </li>
-                {% endfor %}
-                <!-- Display data here -->
-            </ul>
-            <div class="extrainfo" id="extrainfo">
-                <p class="pllength" id="pllength"></p>
-            </div>
+        <hr>
+    </div>
+    <div class="plcontainer">
+        <div class="upnext">
+            <h2>Up Next</h2>
+            <h3>____________________</h3>
         </div>
-        <div class="clickblocker" id="clickblocker"></div>
-        <div id="slidingDiv">
-            <div class="addsong" id="addsong">
-                <div class="searchcontainer" id="searchcontainer">
-                    <h2>Add Song</h2>
-                    <form id="addform">
-                        <input
-                            type="text"
-                            onfocus="this.value=''"
-                            name="addurl"
-                            id="addurl"
-                            placeholder="Enter URL or search"
-                        />
-                        <div class="addnextcontainer">
-                            <p>Play Next?</p>
-                            <input
-                                type="checkbox"
-                                name="addnext"
-                                id="addnext"
-                                class="addnext"
-                            />
-                        </div>
-                        <input
-                            type="submit"
-                            value="Search/Add to queue"
-                            class="addbutton"
-                        />
-                    </form>
+        <ul id="sortlist">
+            {% for song in playlist %}
+            <li>
+                <div class="songnumber"></div>
+                <img src="{{ song['thumbnail'] }}" />
+                <div class="songtitle">{{ song['name'] }}</div>
+                <div class="songbuttons">
+                    <button class="songplay" id="play">Play</button>
+                    <button class="songlink" id="link">Link</button>
+                    <button class="songdelete" id="delete">Delete</button>
                 </div>
-                <ul id="searchresults"></ul>
-                <p id="clicktoslideout">Click to add song</p>
-            </div>
+            </li>
+            {% endfor %}
+            <!-- Display data here -->
+        </ul>
+        <div class="extrainfo" id="extrainfo">
+            <p class="pllength" id="pllength"></p>
         </div>
-        <script>
-            document.onkeydown = function (e) {
-                if (e.keyCode == 27) {
-                    slidesearch();
-                }
-            };
-            let debounceTimeout;
-
-            const skip = document.getElementById("skip");
-            skip.addEventListener("click", async () => {
-                if (debounceTimeout) {
-                    clearTimeout(debounceTimeout);
-                }
-
-                debounceTimeout = setTimeout(async () => {
-                    const response = await fetch("/skip_song", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({
-                            guild: guild,
-                        }),
-                    });
-
-                    const data = await response.json();
-                    fetchData();
-                }, 300); // Adjust the delay as needed
-            });
-
-            const shuffle = document.getElementById("shuffle");
-            shuffle.addEventListener("click", async () => {
-                if (debounceTimeout) {
-                    clearTimeout(debounceTimeout);
-                }
-
-                debounceTimeout = setTimeout(async () => {
-                    const sortlist = document.getElementById("sortlist");
-                    const firstsong = sortlist.firstChild;
-                    sortlist.style.transition = "opacity 0s";
-                    sortlist.style.opacity = "0.5";
-                    firstsong.style.opacity = "1";
-                    setTimeout(function () {
-                        sortlist.style.transition = "opacity 3s";
-                        sortlist.style.opacity = "1";
-                    }, 6000);
-                    const response = await fetch("/shuffle", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({
-                            guild: guild,
-                        }),
-                    });
-
-                    const data = await response.json();
-                    fetchData();
-                }, 300);
-            });
-
-            const loop = document.getElementById("loop");
-            loop.addEventListener("click", async () => {
-                if (debounceTimeout) {
-                    clearTimeout(debounceTimeout);
-                }
-
-                debounceTimeout = setTimeout(async () => {
-                    const response = await fetch("/loop", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({
-                            guild: guild,
-                        }),
-                    });
-
-                    const data = await response.json();
-                    if (data.looping === true) {
-                        document.getElementById("loop").style =
-                            "background: #0b6122;";
-                    } else {
-                        document.getElementById("loop").style =
-                            "background: darkgray;";
-                    }
-                    fetchData();
-                }, 300); // Adjust the delay as needed
-            });
-            function getUpdatedListJSON() {
-                const sortlist = document.getElementById("sortlist");
-                const updatedList = [];
-                const lis = sortlist.getElementsByTagName("li");
-                for (let i = 0; i < lis.length; i++) {
-                    const li = lis[i];
-                    const id = li.dataset.id;
-                    const name = li.dataset.name;
-                    const url = li.dataset.url;
-                    updatedList.push({
-                        id,
-                        name,
-                        url,
-                        guild,
-                    });
-                }
-                return JSON.stringify(updatedList);
-            }
-            const clicktoslideout = document.getElementById("clicktoslideout");
-            const slidingDiv = document.getElementById("slidingDiv");
-            slidingDiv.style.top = "-158px";
-            const addsong = document.getElementById("addsong");
-            const searchcontainer = document.getElementById("searchcontainer");
-            const searchresults = document.getElementById("searchresults");
-            const form = document.getElementById("addform");
-            const clickblocker = document.getElementById("clickblocker");
-            function slidesearch() {
-                if (slidingDiv.style.top == "-158px") {
-                    clickblocker.style.width = "100%";
-                    clickblocker.style.height = "100%";
-                    clickblocker.style.opacity = "0.5";
-                    slidingDiv.style.top = "-20px";
-                    clicktoslideout.innerHTML = "Click to hide";
-                    form.addurl.focus();
-                } else {
-                    clickblocker.style.width = "0%";
-                    clickblocker.style.height = "0%";
-                    clickblocker.style.opacity = "0";
-                    slidingDiv.style.top = "-158px";
-                    slidingDiv.style.height = "143px";
-                    searchcontainer.style.height = "100%";
-                    searchresults.style.height = "0%";
-                    searchresults.style.opacity = "0";
-                    searchresults.innerHTML = "";
-                    clicktoslideout.innerHTML = "Click to add song";
-                    form.addurl.blur();
-                }
-            }
-            clicktoslideout.addEventListener("click", () => {
+    </div>
+    <div class="clickblocker" id="clickblocker"></div>
+    <div id="slidingDiv">
+        <div class="addsong" id="addsong">
+            <div class="searchcontainer" id="searchcontainer">
+                <h2>Add Song</h2>
+                <form id="addform">
+                    <input type="text" onfocus="this.value=''" name="addurl" id="addurl"
+                        placeholder="Enter URL or search" />
+                    <div class="addnextcontainer">
+                        <p>Play Next?</p>
+                        <input type="checkbox" name="addnext" id="addnext" class="addnext" />
+                    </div>
+                    <input type="submit" value="Search/Add to queue" class="addbutton" />
+                </form>
+            </div>
+            <ul id="searchresults"></ul>
+            <p id="clicktoslideout">Click to add song</p>
+        </div>
+    </div>
+    <script>
+        document.onkeydown = function (e) {
+            if (e.keyCode == 27) {
                 slidesearch();
-            });
-            form.addEventListener("submit", async (e) => {
-                e.preventDefault();
-                if (debounceTimeout) {
-                    clearTimeout(debounceTimeout);
-                }
+            }
+        };
+        let debounceTimeout;
 
-                debounceTimeout = setTimeout(async () => {
+        const skip = document.getElementById("skip");
+        skip.addEventListener("click", async () => {
+            if (debounceTimeout) {
+                clearTimeout(debounceTimeout);
+            }
+
+            debounceTimeout = setTimeout(async () => {
+                const response = await fetch("./skip_song", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        guild: guild,
+                    }),
+                });
+
+                const data = await response.json();
+                fetchData();
+            }, 300); // Adjust the delay as needed
+        });
+
+        const shuffle = document.getElementById("shuffle");
+        shuffle.addEventListener("click", async () => {
+            if (debounceTimeout) {
+                clearTimeout(debounceTimeout);
+            }
+
+            debounceTimeout = setTimeout(async () => {
+                const sortlist = document.getElementById("sortlist");
+                const firstsong = sortlist.firstChild;
+                sortlist.style.transition = "opacity 0s";
+                sortlist.style.opacity = "0.5";
+                firstsong.style.opacity = "1";
+                setTimeout(function () {
+                    sortlist.style.transition = "opacity 3s";
+                    sortlist.style.opacity = "1";
+                }, 6000);
+                const response = await fetch("./shuffle", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        guild: guild,
+                    }),
+                });
+
+                const data = await response.json();
+                fetchData();
+            }, 300);
+        });
+
+        const loop = document.getElementById("loop");
+        loop.addEventListener("click", async () => {
+            if (debounceTimeout) {
+                clearTimeout(debounceTimeout);
+            }
+
+            debounceTimeout = setTimeout(async () => {
+                const response = await fetch("./loop", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        guild: guild,
+                    }),
+                });
+
+                const data = await response.json();
+                if (data.looping === true) {
+                    document.getElementById("loop").style =
+                        "background: #0b6122;";
+                } else {
+                    document.getElementById("loop").style =
+                        "background: darkgray;";
+                }
+                fetchData();
+            }, 300); // Adjust the delay as needed
+        });
+        function getUpdatedListJSON() {
+            const sortlist = document.getElementById("sortlist");
+            const updatedList = [];
+            const lis = sortlist.getElementsByTagName("li");
+            for (let i = 0; i < lis.length; i++) {
+                const li = lis[i];
+                const id = li.dataset.id;
+                const name = li.dataset.name;
+                const url = li.dataset.url;
+                updatedList.push({
+                    id,
+                    name,
+                    url,
+                    guild,
+                });
+            }
+            return JSON.stringify(updatedList);
+        }
+        const clicktoslideout = document.getElementById("clicktoslideout");
+        const slidingDiv = document.getElementById("slidingDiv");
+        slidingDiv.style.top = "-158px";
+        const addsong = document.getElementById("addsong");
+        const searchcontainer = document.getElementById("searchcontainer");
+        const searchresults = document.getElementById("searchresults");
+        const form = document.getElementById("addform");
+        const clickblocker = document.getElementById("clickblocker");
+        function slidesearch() {
+            if (slidingDiv.style.top == "-158px") {
+                clickblocker.style.width = "100%";
+                clickblocker.style.height = "100%";
+                clickblocker.style.opacity = "0.5";
+                slidingDiv.style.top = "-20px";
+                clicktoslideout.innerHTML = "Click to hide";
+                form.addurl.focus();
+            } else {
+                clickblocker.style.width = "0%";
+                clickblocker.style.height = "0%";
+                clickblocker.style.opacity = "0";
+                slidingDiv.style.top = "-158px";
+                slidingDiv.style.height = "143px";
+                searchcontainer.style.height = "100%";
+                searchresults.style.height = "0%";
+                searchresults.style.opacity = "0";
+                searchresults.innerHTML = "";
+                clicktoslideout.innerHTML = "Click to add song";
+                form.addurl.blur();
+            }
+        }
+        clicktoslideout.addEventListener("click", () => {
+            slidesearch();
+        });
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            if (debounceTimeout) {
+                clearTimeout(debounceTimeout);
+            }
+
+            debounceTimeout = setTimeout(async () => {
+                const searchresults =
+                    document.getElementById("searchresults");
+                searchresults.style.opacity = "0";
+                searchresults.innerHTML = "";
+                slidingDiv.style.height = "60%";
+                searchcontainer.style.height = "25%";
+                searchresults.style.height = "75%";
+                searchresults.style.opacity = "1";
+                const response = await fetch("./add_song", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        addurl: form.addurl.value,
+                        addnext: form.addnext.checked,
+                        guild: guild,
+                    }),
+                });
+                const data = await response.json();
+                if (data.success == false) {
                     const searchresults =
                         document.getElementById("searchresults");
-                    searchresults.style.opacity = "0";
-                    searchresults.innerHTML = "";
                     slidingDiv.style.height = "60%";
                     searchcontainer.style.height = "25%";
                     searchresults.style.height = "75%";
                     searchresults.style.opacity = "1";
-                    const response = await fetch("/add_song", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({
-                            addurl: form.addurl.value,
-                            addnext: form.addnext.checked,
-                            guild: guild,
-                        }),
-                    });
-                    const data = await response.json();
-                    if (data.success == false) {
-                        const searchresults =
-                            document.getElementById("searchresults");
-                        slidingDiv.style.height = "60%";
-                        searchcontainer.style.height = "25%";
-                        searchresults.style.height = "75%";
-                        searchresults.style.opacity = "1";
+                    const li = document.createElement("li");
+                    li.innerHTML = "Error adding song: " + data.error;
+                    searchresults.appendChild(li);
+                } else if (
+                    data.is_playlist == false &&
+                    data.is_url == false
+                ) {
+                    const results = data.results;
+                    const searchresults =
+                        document.getElementById("searchresults");
+                    slidingDiv.style.height = "60%";
+                    searchcontainer.style.height = "25%";
+                    searchresults.style.height = "75%";
+                    searchresults.style.opacity = "1";
+                    results.forEach((result, i) => {
+                        const searchurl = result.url;
+                        const searchname = result.title;
+                        const searchimg =
+                            "https://img.youtube.com/vi/" +
+                            result.url.split("v=")[1] +
+                            "/mqdefault.jpg";
+                        const searchduration = result.duration;
                         const li = document.createElement("li");
-                        li.innerHTML = "Error adding song: " + data.error;
-                        searchresults.appendChild(li);
-                    } else if (
-                        data.is_playlist == false &&
-                        data.is_url == false
-                    ) {
-                        const results = data.results;
-                        const searchresults =
-                            document.getElementById("searchresults");
-                        slidingDiv.style.height = "60%";
-                        searchcontainer.style.height = "25%";
-                        searchresults.style.height = "75%";
-                        searchresults.style.opacity = "1";
-                        results.forEach((result, i) => {
-                            const searchurl = result.url;
-                            const searchname = result.title;
-                            const searchimg =
-                                "https://img.youtube.com/vi/" +
-                                result.url.split("v=")[1] +
-                                "/mqdefault.jpg";
-                            const searchduration = result.duration;
-                            const li = document.createElement("li");
-                            const num = document.createElement("span");
-                            const img = document.createElement("img");
-                            const name = document.createElement("span");
-                            const duration = document.createElement("span");
-                            const link = document.createElement("a");
-                            const linkbutton = document.createElement("button");
-                            num.innerHTML = i + 1 + ".";
-                            num.style = "margin-right: 10px;";
-                            li.appendChild(num);
-                            img.src = searchimg;
-                            img.style = "margin-right: 10px;";
-                            li.appendChild(img);
-                            name.innerHTML = searchname;
-                            name.style =
-                                "white-space: nowrap; overflow: hidden; width: 500%; text-overflow: ellipsis;";
-                            li.appendChild(name);
-                            duration.innerHTML = searchduration;
-                            duration.style =
-                                "display: flex; justify-content: flex-end; width: 100%; margin-left: 10px;";
-                            li.appendChild(duration);
-                            link.href = searchurl;
-                            link.target = "_blank";
-                            link.style = "margin-left: 10px;";
-                            linkbutton.innerHTML = "Link";
-                            link.appendChild(linkbutton);
-                            li.appendChild(link);
-                            li.dataset.url = searchurl;
-                            li.dataset.name = searchname;
-                            li.addEventListener("click", async () => {
-                                if (debounceTimeout) {
-                                    clearTimeout(debounceTimeout);
-                                }
+                        const num = document.createElement("span");
+                        const img = document.createElement("img");
+                        const name = document.createElement("span");
+                        const duration = document.createElement("span");
+                        const link = document.createElement("a");
+                        const linkbutton = document.createElement("button");
+                        num.innerHTML = i + 1 + ".";
+                        num.style = "margin-right: 10px;";
+                        li.appendChild(num);
+                        img.src = searchimg;
+                        img.style = "margin-right: 10px;";
+                        li.appendChild(img);
+                        name.innerHTML = searchname;
+                        name.style =
+                            "white-space: nowrap; overflow: hidden; width: 500%; text-overflow: ellipsis;";
+                        li.appendChild(name);
+                        duration.innerHTML = searchduration;
+                        duration.style =
+                            "display: flex; justify-content: flex-end; width: 100%; margin-left: 10px;";
+                        li.appendChild(duration);
+                        link.href = searchurl;
+                        link.target = "_blank";
+                        link.style = "margin-left: 10px;";
+                        linkbutton.innerHTML = "Link";
+                        link.appendChild(linkbutton);
+                        li.appendChild(link);
+                        li.dataset.url = searchurl;
+                        li.dataset.name = searchname;
+                        li.addEventListener("click", async () => {
+                            if (debounceTimeout) {
+                                clearTimeout(debounceTimeout);
+                            }
 
-                                debounceTimeout = setTimeout(async () => {
-                                    const response = await fetch("/add_song", {
-                                        method: "POST",
-                                        headers: {
-                                            "Content-Type": "application/json",
-                                        },
-                                        body: JSON.stringify({
-                                            addurl: searchurl,
-                                            addnext: form.addnext.checked,
-                                            guild: guild,
-                                        }),
-                                    });
-                                    const data = await response.json();
-                                    li.style = "background: #078528;";
-                                    // slidesearch();
-                                    fetchData();
-                                }, 300);
-                            });
-                            searchresults.appendChild(li);
+                            debounceTimeout = setTimeout(async () => {
+                                const response = await fetch("./add_song", {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify({
+                                        addurl: searchurl,
+                                        addnext: form.addnext.checked,
+                                        guild: guild,
+                                    }),
+                                });
+                                const data = await response.json();
+                                li.style = "background: #078528;";
+                                // slidesearch();
+                                fetchData();
+                            }, 300);
                         });
-                    } else if (data.is_playlist == true) {
-                        const searchresults =
-                            document.getElementById("searchresults");
-                        slidingDiv.style.height = "60%";
-                        searchcontainer.style.height = "25%";
-                        searchresults.style.height = "75%";
-                        searchresults.style.opacity = "1";
-                        const li = document.createElement("li");
-                        li.style = "background: #078528;";
-                        li.innerHTML = "Playlist added!";
                         searchresults.appendChild(li);
-                    } else {
-                        const searchresults =
-                            document.getElementById("searchresults");
-                        slidingDiv.style.height = "60%";
-                        searchcontainer.style.height = "25%";
-                        searchresults.style.height = "75%";
-                        searchresults.style.opacity = "1";
-                        const li = document.createElement("li");
-                        li.style = "background: #078528;";
-                        li.innerHTML = "Song added!";
-                        searchresults.appendChild(li);
-                    }
-                    fetchData();
-                }, 300);
-            });
-            clickblocker.addEventListener("click", () => {
-                slidesearch();
-            });
+                    });
+                } else if (data.is_playlist == true) {
+                    const searchresults =
+                        document.getElementById("searchresults");
+                    slidingDiv.style.height = "60%";
+                    searchcontainer.style.height = "25%";
+                    searchresults.style.height = "75%";
+                    searchresults.style.opacity = "1";
+                    const li = document.createElement("li");
+                    li.style = "background: #078528;";
+                    li.innerHTML = "Playlist added!";
+                    searchresults.appendChild(li);
+                } else {
+                    const searchresults =
+                        document.getElementById("searchresults");
+                    slidingDiv.style.height = "60%";
+                    searchcontainer.style.height = "25%";
+                    searchresults.style.height = "75%";
+                    searchresults.style.opacity = "1";
+                    const li = document.createElement("li");
+                    li.style = "background: #078528;";
+                    li.innerHTML = "Song added!";
+                    searchresults.appendChild(li);
+                }
+                fetchData();
+            }, 300);
+        });
+        clickblocker.addEventListener("click", () => {
+            slidesearch();
+        });
 
-            // Fetch data initially
-            fetchData();
+        // Fetch data initially
+        fetchData();
 
-            // Fetch data every 10 seconds
-            setInterval(fetchData, 15000);
-        </script>
-        <div class="background" id="background"></div>
-    </body>
+        // Fetch data every 10 seconds
+        setInterval(fetchData, 15000);
+    </script>
+    <div class="background" id="background"></div>
+</body>
+
 </html>
