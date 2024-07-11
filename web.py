@@ -1,14 +1,18 @@
-from flask import Flask, render_template, jsonify, make_response, request, abort
+from flask import Flask, render_template, jsonify, make_response, request
+from werkzeug.middleware.proxy_fix import ProxyFix
 import os
 import re
 import random
 import urllib
 import sqlite3
-from faker import Faker
 from dotenv import load_dotenv
 from youtubesearchpython import SearchVideos
 
 app = Flask(__name__)
+
+app.wsgi_app = ProxyFix(
+    app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
+)
 
 load_dotenv()
 
@@ -166,64 +170,6 @@ def rainbowprint(msg) -> None:
     for i in range(len(msg)):
         print(colors[i % len(colors)] + msg[i], end="")
     print(reset)
-
-
-def randescape(num):
-    pychars = ["'", '"', "\\", "\n", "\t", "\b", "\r", "\f", "\v", "\a"]
-    restr = ""
-    for i in range(num):
-        if random.randint(0, 10) <= 2:
-            restr += random.choice(pychars)
-        else:
-            range1 = (0, 0xD7FF)
-            range2 = (0xE000, 0x10FFFF)
-            select_range = random.choice([range1, range2])
-            restr += chr(random.randint(select_range[0], select_range[1]))
-    return restr
-
-
-def randpeople(num):
-    fake = Faker()
-
-    data = {}
-    for i in range(num):
-        user = fake.simple_profile()  # username, name, sex, address, mail, birthdate
-        user["ssn"] = fake.ssn()
-        user["phone"] = fake.phone_number()
-        user["credit_card"] = {
-            "card_number": fake.credit_card_number(),
-            "card_provider": fake.credit_card_provider(),
-            "card_security": fake.credit_card_security_code(),
-            "card_expire": fake.credit_card_expire(),
-        }
-        randattr = random.choice(list(user.keys()))
-        user[randattr] = randescape(50)
-        randattrremove = random.choice(list(user.keys()))
-        del user[randattrremove]
-        data[randescape(50)] = user
-    return jsonify(data)
-
-
-# idk doing something with request spam
-@app.errorhandler(404)
-def page_not_found(e):
-    rainbowprint("===WRONG REQUEST===")
-    return randescape(1000)
-
-
-@app.errorhandler(400)
-def bad_request(e):
-    rainbowprint("===WRONG REQUEST===")
-    return randescape(2500000)
-
-
-@app.before_request
-def check_guild_parameter():
-    if request.path.startswith("/static"):
-        return
-    if "guild" not in request.args and request.method != "POST":
-        rainbowprint("===WRONG REQUEST===")
-        return randpeople(5000)
 
 
 @app.route("/")
