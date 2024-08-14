@@ -25,6 +25,7 @@ prefix_variations = [
     PREFIX.upper(),
     PREFIX.upper() + " ",
 ]
+PROXY_URL = os.getenv("PROXY")
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix=prefix_variations, intents=intents)
@@ -44,6 +45,8 @@ ytdlp_format_options = {
     "default_search": "auto",
     "source_address": "0.0.0.0",
 }
+if PROXY_URL:
+    ytdlp_format_options["proxy"] = PROXY_URL
 
 ffmpeg_opts = {
     "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
