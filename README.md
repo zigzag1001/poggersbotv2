@@ -39,6 +39,7 @@ DISCORD_TOKEN = <your discord bot token>
 BASE_URL = http://example.com:7777/
 PORT = 7777
 PREFIX = r;
+PROXY = 0.0.0.0:0000 # Optional, helps with youtube blocking ip's
 ```
 4. **The discord token is required**, url and port just make the web interface work. If you already have a Discord app skip to 7
 5. To create a Discord app and get the token: 
