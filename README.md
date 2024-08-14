@@ -17,7 +17,8 @@
 - Edit queue (i.e. drag songs) from the web interface
 
 #### Preview Web
-![general_webui_example](https://github.com/zigzag1001/poggersbotv2/assets/72932714/39e4dfaa-100c-4414-8fad-2a50c23b233f)
+![poggersbot_demo_v2](https://github.com/user-attachments/assets/c2544cb4-f880-49bb-a30e-c728f0c66723)
+
 #### Preview Web Features
 https://github.com/zigzag1001/poggersbotv2/assets/72932714/f2c2eafc-ca2a-4b77-ba74-9c934166fcdd
 #### Preview Basic Text Commands
