@@ -48,6 +48,12 @@ ytdlp_format_options = {
 if PROXY_URL:
     ytdlp_format_options["proxy"] = PROXY_URL
 
+    proxy_handler = urllib.request.ProxyHandler(
+        {'http':PROXY_URL, 'https':PROXY_URL}
+    )
+    opener = urllib.request.build_opener(proxy_handler)
+    urllib.request.install_opener(opener)
+
 ffmpeg_opts = {
     "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
     "options": "-vn",
@@ -263,6 +269,8 @@ def get_yt_data(urls_list):
                     .group(1)
                     .split(" - YouTube")[0]
                 )
+                if name is None or name == "":
+                    print(colorize("YTError", "red"), html_res)
                 try:
                     duration = re.search(r'"lengthSeconds":"(.*?)"', html_res).group(1)
                 except AttributeError:
