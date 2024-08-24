@@ -15,6 +15,13 @@ app.wsgi_app = ProxyFix(
 )
 
 load_dotenv()
+PROXY_URL = os.getenv("PROXY")
+if PROXY_URL:
+    proxy_handler = urllib.request.ProxyHandler(
+        {'http':PROXY_URL, 'https':PROXY_URL}
+    )
+    opener = urllib.request.build_opener(proxy_handler)
+    urllib.request.install_opener(opener)
 
 db_name = "db/bot.db"
 
@@ -68,12 +75,15 @@ def add_to_playlist(url, guild, addnext):
     mydb.close()
 
 
+# Gets yt data, if not cached, gets from yt and caches
+# returns a dict of url: (name, duration)
 def get_yt_data(urls_list):
     if len(urls_list) == 0:
         return {}
+
+    # pulls data from database into a dict
     mydb = sqlite3.connect(db_name)
     mycursor = mydb.cursor()
-    # makes one query for all urls
     mycursor.execute(
         "SELECT url, name, duration FROM yt_data WHERE url IN ({})".format(
             ",".join(["?"] * len(urls_list))
@@ -81,6 +91,8 @@ def get_yt_data(urls_list):
         urls_list,
     )
     result = mycursor.fetchall()
+
+    # puts cached data into dict for future reference
     resultsdict = {}
     if result is not None:
         for x in result:
@@ -88,45 +100,117 @@ def get_yt_data(urls_list):
 
     urls_list_data = {}
 
+    # checks if data is in database, if not, gets from yt and caches into db
     for url in urls_list:
         if url in resultsdict:
+            # only needed since some data is cached but incorrect
+            if (
+                any(x in resultsdict[url][0] for x in ["&quot;", "&#39;", "&amp;"])
+                or resultsdict[url][0] == ""
+            ):
+                if resultsdict[url][0] == "":
+                    resultsdict[url] = ("Unknown", resultsdict[url][1])
+                resultsdict[url] = (
+                    resultsdict[url][0]
+                    .replace("&quot;", '"')
+                    .replace("&#39;", "'")
+                    .replace("&amp;", "&"),
+                    resultsdict[url][1],
+                )
+                mycursor.execute(
+                    "UPDATE yt_data SET name = ?, duration = ? WHERE url = ?",
+                    (resultsdict[url][0], resultsdict[url][1], url),
+                )
             urls_list_data[url] = resultsdict[url]
         elif url.startswith("search://"):
             name = url.split("search://")[1]
-            urls_list_data[url] = (name, "search")
+            duration = "0:00"
+            try:
+                mycursor.execute(
+                    "INSERT INTO yt_data (url, name, duration) VALUES (?, ?, ?)",
+                    (url, name, duration),
+                )
+                mydb.commit()
+            except sqlite3.IntegrityError:
+                print("get_yt_data IntegrityError")
+            urls_list_data[url] = (name, duration)
         else:
-            name = None
-            duration = None
+            # html extraction
+            html_res = None
             try:
                 response = urllib.request.urlopen(url)
-                html = response.read().decode()
+                html_res = response.read().decode()
             except urllib.error.HTTPError:
-                print("HTTPError", url)
+                print(colorize("HTTPError", "red"), url)
+                html_res = None
+            except Exception as e:
+                print(colorize("Error", "red"), url)
+                print(e)
+                html_res = None
             if "youtu.be" in url or "youtube.com" in url:
                 name = (
-                    re.search(r"<title>(.*?)</title>", html).group(1).split(" - YouTube")[0]
+                    re.search(r"<title>(.*?)</title>", html_res)
+                    .group(1)
+                    .split(" - YouTube")[0]
                 )
+                if name is None or name == "":
+                    print(colorize("YTError", "red"), html_res)
                 try:
-                    duration = re.search(r'"lengthSeconds":"(.*?)"', html).group(1)
+                    duration = re.search(r'"lengthSeconds":"(.*?)"', html_res).group(1)
                 except AttributeError:
                     duration = None
             elif "soundcloud.com" in url:
+                time1 = time.time()  # debug
                 if "api-v2" in url:
-                    data = os.popen(f"yt-dlp {url} --get-title --get-duration").read().strip().split("\n")
+                    data = (
+                        os.popen(f"yt-dlp {url} --get-title --get-duration")
+                        .read()
+                        .strip()
+                        .split("\n")
+                    )
                     name = data[0]
                     duration = data[1]
                     min = int(duration.split(":")[0])
                     sec = int(duration.split(":")[1])
                     duration = str(min * 60 + sec)
                 else:
-                    name = re.search(r'<meta property="og:title" content="(.*?)">', html).group(1)
+                    name = re.search(
+                        r'<meta property="og:title" content="(.*?)">', html_res
+                    ).group(1)
                     try:
-                        duration = re.search(r'<span aria-hidden="true">(\d+):(\d+)</span>', html)
+                        duration = re.search(
+                            r'<span aria-hidden="true">(\d+):(\d+)</span>', html_res
+                        )
                         mins = int(duration.group(1))
                         secs = int(duration.group(2))
                         duration = str(mins * 60 + secs)
                     except AttributeError:
                         duration = None
+                print(
+                    f"Soundcloud name duration time taken: {time.time() - time1}"
+                )  # debug
+            elif html_res is not None and "<title>" in html_res:
+                name = get_html_title(url, html_res)
+                duration = None
+            elif any(
+                url.split("?")[0].endswith(x)
+                for x in [".mp3", ".wav", ".flac", ".m4a", ".ogg", ".webm"]
+            ):
+                name = url.split("/")[-1].split("?")[0]
+                duration = None
+            else:
+                print("Not a valid url")
+                name = "Invalid url"
+                duration = None
+
+            if name is None or name == "":
+                name = "Unknown"
+            else:
+                name = (
+                    name.replace("&quot;", '"')
+                    .replace("&#39;", "'")
+                    .replace("&amp;", "&")
+                )
 
             # duration calculation
             if duration is None:
@@ -141,9 +225,7 @@ def get_yt_data(urls_list):
                 secs = f"{int(duration) % 60 : 03d}"
             duration_minsec = f"{mins}:{secs.strip()}"
 
-            if name is None:
-                name = url
-
+            # add to database
             try:
                 mycursor.execute(
                     "INSERT INTO yt_data (url, name, duration) VALUES (?, ?, ?)",
@@ -151,7 +233,7 @@ def get_yt_data(urls_list):
                 )
                 mydb.commit()
             except sqlite3.IntegrityError:
-                pass
+                print("get_yt_data IntegrityError")
             urls_list_data[url] = (name, duration_minsec)
     mydb.close()
     return urls_list_data
