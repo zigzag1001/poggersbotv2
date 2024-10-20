@@ -45,8 +45,16 @@ ytdlp_format_options = {
     "default_search": "auto",
     "source_address": "0.0.0.0",
 }
+
+ffmpeg_opts = {
+    "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+    "options": "-vn",
+}
+
 if PROXY_URL:
     ytdlp_format_options["proxy"] = PROXY_URL
+
+    ffmpeg_opts["before_options"] += f" -http_proxy {PROXY_URL}"
 
     proxy_handler = urllib.request.ProxyHandler(
         {'http':PROXY_URL, 'https':PROXY_URL}
@@ -54,10 +62,6 @@ if PROXY_URL:
     opener = urllib.request.build_opener(proxy_handler)
     urllib.request.install_opener(opener)
 
-ffmpeg_opts = {
-    "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
-    "options": "-vn",
-}
 
 db_name = "db/bot.db"
 
@@ -755,6 +759,8 @@ async def play_audio(ctx):
                     "before_options": f"-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -ss {resume_time}",
                     "options": "-vn",
                 }
+                if PROXY_URL:
+                    newffmpeg_opts["before_options"] += f" -http_proxy {PROXY_URL}"
                 source = discord.FFmpegPCMAudio(pureurl, **newffmpeg_opts)
             else:
                 source = discord.FFmpegPCMAudio(pureurl, **ffmpeg_opts)
