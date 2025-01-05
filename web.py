@@ -25,6 +25,19 @@ if PROXY_URL:
 
 db_name = "db/bot.db"
 
+def colorize(string, color):
+    colors = {
+        "red": "\033[91m",
+        "green": "\033[92m",
+        "yellow": "\033[93m",
+        "blue": "\033[94m",
+        "purple": "\033[95m",
+        "cyan": "\033[96m",
+        "white": "\033[97m",
+        "black": "\033[30m",
+    }
+    reset = "\033[0m"
+    return colors[color] + string + reset
 
 def add_to_playlist(url, guild, addnext):
     mydb = sqlite3.connect(db_name)
