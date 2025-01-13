@@ -832,11 +832,12 @@ async def play_audio(ctx):
                         mydb.commit()
                         mydb.close()
                         tmp = actions["fffilter"]
+                        if tmp in ["list", "ls"]:
+                            await ctx.send(f"Current filter: {filter[ctx.guild.id]}")
+                            continue
                         if tmp.startswith("add"):
                             tmp = tmp.split("add ")[1]
                             filter[ctx.guild.id].append(tmp)
-                        if tmp in ["list", "ls"]:
-                            await ctx.send(f"Current filter: {filter[ctx.guild.id]}")
                         elif tmp in ["none", "", "stop"]:
                             filter[ctx.guild.id] = []
                         else:
