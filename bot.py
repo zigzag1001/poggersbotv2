@@ -1633,7 +1633,7 @@ async def fffilter(ctx, *, filter: str = None):
         )
 async def filter(ctx, *, filter: str = None):
     options = {
-            "lowquality": "aresample=8000,lowpass=f=3000,highpass=f=150,volume=1.1",
+            "lowquality": "aresample=8000,lowpass=f=3000,highpass=f=150,volume=1.3",
             "reverse": "areverse",
             "slow": "asetrate=44100*0.8,aresample=44100",
             "fast": "asetrate=44100*1.25,aresample=44100",
