@@ -2,6 +2,7 @@ import os
 import re
 import html
 import time
+import copy
 import urllib
 import yt_dlp
 import asyncio
@@ -679,6 +680,7 @@ async def play_audio(ctx):
         )
 
     moved = False
+    filter = {}
     progresstime = 0
     pureurl = ""
     errors = 0
@@ -747,6 +749,18 @@ async def play_audio(ctx):
 
             print(f"Url retrieve time taken: {time.time() - time1}")  # debug
 
+            ffmpeg_opts_copy = copy.deepcopy(ffmpeg_opts)
+
+            # filter
+            if ctx.guild.id not in filter.keys():
+                filter[ctx.guild.id] = []
+            if filter[ctx.guild.id] != []:
+                print(f"{filter[ctx.guild.id]=}")
+                s = " -af "
+                for f in filter[ctx.guild.id]:
+                    s += f + ","
+                ffmpeg_opts_copy["options"] += s[:-1]
+
             if not moved:
                 audiostarttime = time.time()
 
@@ -755,15 +769,12 @@ async def play_audio(ctx):
                 moved = False
                 resume_time = progresstime
                 print(f"Resuming at {resume_time}")
-                newffmpeg_opts = {
-                    "before_options": f"-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -ss {resume_time}",
-                    "options": "-vn",
-                }
+                ffmpeg_opts_copy["before_options"] += f" -ss {resume_time}"
                 if PROXY_URL:
-                    newffmpeg_opts["before_options"] += f" -http_proxy {PROXY_URL}"
-                source = discord.FFmpegPCMAudio(pureurl, **newffmpeg_opts)
+                    ffmpeg_opts_copy["before_options"] += f" -http_proxy {PROXY_URL}"
+                source = discord.FFmpegPCMAudio(pureurl, **ffmpeg_opts_copy)
             else:
-                source = discord.FFmpegPCMAudio(pureurl, **ffmpeg_opts)
+                source = discord.FFmpegPCMAudio(pureurl, **ffmpeg_opts_copy)
             source.read()
             voice_client.play(source)
             print(f"{colorize(ctx.guild.name, 'green')} - Playing {url}")
@@ -811,6 +822,25 @@ async def play_audio(ctx):
                         if actions["ss"] == None or actions["ss"] == "":
                             skip_time = 0
                         progresstime = skip_time
+                        voice_client.stop()
+                        break
+                    elif "fffilter" in actions.keys():
+                        mycursor.execute(
+                                "DELETE FROM bot_control WHERE guild = ? AND action = ?",
+                                (ctx.guild.id, "fffilter"),
+                                                        )
+                        mydb.commit()
+                        mydb.close()
+                        tmp = actions["fffilter"]
+                        if tmp.startswith("add"):
+                            tmp = tmp.split("add ")[1]
+                            filter[ctx.guild.id].append(tmp)
+                        elif tmp in ["none", "", "stop"]:
+                            filter[ctx.guild.id] = []
+                        else:
+                            filter[ctx.guild.id] = [actions["fffilter"]]
+                        moved = True
+                        skip_time = progresstime
                         voice_client.stop()
                         break
                 await asyncio.sleep(1)
@@ -1092,6 +1122,8 @@ async def stop(ctx, guild=None):
     mydb.commit()
     mydb.close()
     voice_client = guild.voice_client
+    if "-af" in ffmpeg_opts["options"]:
+        ffmpeg_opts["options"] = ffmpeg_opts["options"].split(" -af")[0]
     await voice_client.disconnect()
 
 
@@ -1560,6 +1592,75 @@ async def cls(ctx, hours: str = "1", limit: str = "100"):
         check=is_bot,
     )
     await ctx.send(f"Deleted {len(deleted)} messages in {time.time() - time1} seconds")
+
+
+@bot.command(
+    name="fffilter",
+    help="ffmpeg filter for audio",
+)
+async def fffilter(ctx, *, filter: str = None):
+    if filter is None:
+        await ctx.send("Please provide a filter")
+        return
+
+    mydb = sqlite3.connect(db_name)
+    mycursor = mydb.cursor()
+    mycursor.execute(
+        "SELECT extra FROM bot_control WHERE guild = ? AND action = ?",
+        (ctx.guild.id, "fffilter"),
+    )
+    result = mycursor.fetchone()
+    if result is not None:
+        mycursor.execute(
+            "UPDATE bot_control SET extra = ? WHERE guild = ? AND action = ?",
+            (filter, ctx.guild.id, "fffilter"),
+        )
+    else:
+        mycursor.execute(
+            "INSERT INTO bot_control (guild, action, extra) VALUES (?, ?, ?)",
+            (ctx.guild.id, "fffilter", filter),
+        )
+    mydb.commit()
+    mydb.close()
+    await ctx.send(f"Set ffmpeg filter to: {filter}")
+
+
+@bot.command(
+        name="filter",
+        help="preset audio filters",
+        )
+async def filter(ctx, *, filter: str = None):
+    options = {
+            "lowquality": "aresample=8000,lowpass=f=3000,highpass=f=150",
+            "reverse": "areverse",
+            "slow": "asetrate=44100*0.8,aresample=44100",
+            "fast": "asetrate=44100*1.25,aresample=44100",
+            "bassboost": "bass=g=3",
+            "earrape": "acrusher=.1:1:64:0:log,volume=0.3",
+            "megabass": "bass=g=10",
+    }
+
+    s = ""
+
+    if filter is None:
+        await ctx.send("Please provide a filter")
+        return
+
+    if "add" in filter:
+        filter = filter.split("add ")[1]
+        s = "add "
+    if filter in ["none", "clear", "stop"]:
+        filter = "none"
+        await fffilter(ctx, filter=filter)
+        return
+    elif filter not in options.keys():
+        await ctx.send("Invalid filter")
+        await ctx.send("Available filters: " + ", ".join(options.keys()))
+        return
+
+    s += options[filter]
+    await fffilter(ctx, filter=s)
+
 
 
 bot.run(TOKEN)
