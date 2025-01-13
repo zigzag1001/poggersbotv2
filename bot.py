@@ -915,7 +915,7 @@ async def on_message(message):
 @bot.event
 async def on_voice_state_update(member, before, after):
     bot_voice_channel = member.guild.voice_client
-    if bot_voice_channel is None:
+    if bot_voice_channel is None or bot_voice_channel.channel.members == []:
         return
     # stop if bot is alone in voice channel
     if bot_voice_channel.channel.members == [bot.user]:
@@ -1125,9 +1125,8 @@ async def stop(ctx, guild=None):
     mydb.commit()
     mydb.close()
     voice_client = guild.voice_client
-    if "-af" in ffmpeg_opts["options"]:
-        ffmpeg_opts["options"] = ffmpeg_opts["options"].split(" -af")[0]
-    await voice_client.disconnect()
+    if voice_client is not None:
+        await voice_client.disconnect()
 
 
 @bot.command(name="clear", help="Clears the queue", aliases=["c", "cl", "C", "Cl"])
@@ -1634,7 +1633,7 @@ async def fffilter(ctx, *, filter: str = None):
         )
 async def filter(ctx, *, filter: str = None):
     options = {
-            "lowquality": "aresample=8000,lowpass=f=3000,highpass=f=150,volume=1.5",
+            "lowquality": "aresample=8000,lowpass=f=3000,highpass=f=150,volume=1.3",
             "reverse": "areverse",
             "slow": "asetrate=44100*0.8,aresample=44100",
             "fast": "asetrate=44100*1.25,aresample=44100",
@@ -1654,6 +1653,9 @@ async def filter(ctx, *, filter: str = None):
         s = "add "
     if filter in ["none", "clear", "stop"]:
         filter = "none"
+        await fffilter(ctx, filter=filter)
+        return
+    elif filter in ["list", "ls"]:
         await fffilter(ctx, filter=filter)
         return
     elif filter not in options.keys():
