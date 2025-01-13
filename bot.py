@@ -1634,7 +1634,7 @@ async def fffilter(ctx, *, filter: str = None):
         )
 async def filter(ctx, *, filter: str = None):
     options = {
-            "lowquality": "aresample=8000,lowpass=f=3000,highpass=f=150,volume=1.5",
+            "lowquality": "aresample=8000,lowpass=f=3000,highpass=f=150,volume=1.1",
             "reverse": "areverse",
             "slow": "asetrate=44100*0.8,aresample=44100",
             "fast": "asetrate=44100*1.25,aresample=44100",
@@ -1654,6 +1654,9 @@ async def filter(ctx, *, filter: str = None):
         s = "add "
     if filter in ["none", "clear", "stop"]:
         filter = "none"
+        await fffilter(ctx, filter=filter)
+        return
+    elif filter in ["list", "ls"]:
         await fffilter(ctx, filter=filter)
         return
     elif filter not in options.keys():
