@@ -835,6 +835,8 @@ async def play_audio(ctx):
                         if tmp.startswith("add"):
                             tmp = tmp.split("add ")[1]
                             filter[ctx.guild.id].append(tmp)
+                        if tmp in ["list", "ls"]:
+                            await ctx.send(f"Current filter: {filter[ctx.guild.id]}")
                         elif tmp in ["none", "", "stop"]:
                             filter[ctx.guild.id] = []
                         else:
@@ -1631,12 +1633,12 @@ async def fffilter(ctx, *, filter: str = None):
         )
 async def filter(ctx, *, filter: str = None):
     options = {
-            "lowquality": "aresample=8000,lowpass=f=3000,highpass=f=150",
+            "lowquality": "aresample=8000,lowpass=f=3000,highpass=f=150,volume=1.5",
             "reverse": "areverse",
             "slow": "asetrate=44100*0.8,aresample=44100",
             "fast": "asetrate=44100*1.25,aresample=44100",
             "bassboost": "bass=g=3",
-            "earrape": "acrusher=.1:1:64:0:log,volume=0.3",
+            "earrape": "acrusher=.1:1:64:0:log,volume=0.3,volume=0.3",
             "megabass": "bass=g=10",
     }
 
