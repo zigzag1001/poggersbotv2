@@ -915,7 +915,7 @@ async def on_message(message):
 @bot.event
 async def on_voice_state_update(member, before, after):
     bot_voice_channel = member.guild.voice_client
-    if bot_voice_channel is None:
+    if bot_voice_channel is None or bot_voice_channel.channel.members == []:
         return
     # stop if bot is alone in voice channel
     if bot_voice_channel.channel.members == [bot.user]:
@@ -1125,9 +1125,8 @@ async def stop(ctx, guild=None):
     mydb.commit()
     mydb.close()
     voice_client = guild.voice_client
-    if "-af" in ffmpeg_opts["options"]:
-        ffmpeg_opts["options"] = ffmpeg_opts["options"].split(" -af")[0]
-    await voice_client.disconnect()
+    if voice_client is not None:
+        await voice_client.disconnect()
 
 
 @bot.command(name="clear", help="Clears the queue", aliases=["c", "cl", "C", "Cl"])
