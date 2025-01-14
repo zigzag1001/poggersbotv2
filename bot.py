@@ -1661,14 +1661,14 @@ async def filter(ctx, *, filter: str = None):
             "fast": "asetrate=44100*1.25,aresample=44100",
             "bassboost": "bass=g=3",
             "earrape": "acrusher=.1:1:64:0:log",
-            "earsex": "acrusher=.1:1:64:0:log,volume=0.4",
+            "earsex": "acrusher=.1:1:64:0:log,volume=0.3",
             "megabass": "bass=g=10",
     }
     editable = {
         "bass": {"max": 10, "min": -10, "map": "bass=g={}"},  # "bass=g=3"
         "volume": {"max": 5, "min": 0.1, "map": "volume={}"},  # "volume=1.3"
         "speed": {"max": 3, "min": 0.1, "map": "asetrate=44100*{}", "suffix": ",aresample=44100"},  # "asetrate=44100*0.8,aresample=44100"
-        "bitrate": {"max": 320000, "min": 1000, "map": "aresample={}", "suffix": "aresample=44100"},
+        "bitrate": {"max": 320000, "min": 1000, "map": "aresample={}", "suffix": ",aresample=44100"},
     }
 
     s = ""
@@ -1680,7 +1680,7 @@ async def filter(ctx, *, filter: str = None):
         tmp = ""
         for k in editable:
             tmp += f"{k}: Min: {editable[k]['min']}  -  Max: {editable[k]['max']}\n"
-        await ctx.send("Editable filters:\n" + tmp)
+        await ctx.send("Editable filters (name=value):\n" + tmp + "\n")
         tmp = ""
         for k in options:
             tmp += f"{k}\n"
