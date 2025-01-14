@@ -48,7 +48,7 @@ ytdlp_format_options = {
 }
 
 ffmpeg_opts = {
-    "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+    "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -headers 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0'",
     "options": "-vn",
 }
 
@@ -681,6 +681,7 @@ async def play_audio(ctx):
 
     moved = False
     filter = {}
+    ffmpeg_error = False
     progresstime = 0
     pureurl = ""
     errors = 0
@@ -764,6 +765,7 @@ async def play_audio(ctx):
             if not moved:
                 audiostarttime = time.time()
 
+            print(f"{colorize(ctx.guild.name, 'green')} - Playing {url}")
             if moved:
                 # continue playing audio where it left off
                 moved = False
@@ -777,7 +779,6 @@ async def play_audio(ctx):
                 source = discord.FFmpegPCMAudio(pureurl, **ffmpeg_opts_copy)
             source.read()
             voice_client.play(source)
-            print(f"{colorize(ctx.guild.name, 'green')} - Playing {url}")
 
             # main audio loop, also checks for bot control actions
             while voice_client.is_playing():
@@ -1605,6 +1606,13 @@ async def fffilter(ctx, *, filter: str = None):
         await ctx.send("Please provide a filter")
         return
 
+    # validate filter
+    # and only allow possible ffmpeg filters
+    regex = r"^(?:\w+?=[^,]+,)*?\w+=[^,\n]+$|^\w+$"
+    if not re.match(regex, filter):
+        await ctx.send("Invalid filter")
+        return
+
     mydb = sqlite3.connect(db_name)
     mycursor = mydb.cursor()
     mycursor.execute(
@@ -1633,12 +1641,12 @@ async def fffilter(ctx, *, filter: str = None):
         )
 async def filter(ctx, *, filter: str = None):
     options = {
-            "lowquality": "aresample=8000,lowpass=f=3000,highpass=f=150,volume=1.3",
+            "lowquality": "aresample=8000,lowpass=f=3000,highpass=f=150,volume=1.3,aresample=44100",
             "reverse": "areverse",
             "slow": "asetrate=44100*0.8,aresample=44100",
             "fast": "asetrate=44100*1.25,aresample=44100",
             "bassboost": "bass=g=3",
-            "earrape": "acrusher=.1:1:64:0:log,volume=0.3,volume=0.3",
+            "earrape": "acrusher=.1:1:64:0:log,volume=0.5,volume=0.5",
             "megabass": "bass=g=10",
     }
 
@@ -1658,12 +1666,13 @@ async def filter(ctx, *, filter: str = None):
     elif filter in ["list", "ls"]:
         await fffilter(ctx, filter=filter)
         return
-    elif filter not in options.keys():
-        await ctx.send("Invalid filter")
-        await ctx.send("Available filters: " + ", ".join(options.keys()))
-        return
-
-    s += options[filter]
+    for f in filter.split(" "):
+        if f not in options.keys():
+            await ctx.send(f"Invalid filter {f}")
+            await ctx.send("Available filters: " + ", ".join(options.keys()))
+            return
+        s += options[f] + ","
+    s = s[:-1]
     await fffilter(ctx, filter=s)
 
 
