@@ -681,7 +681,6 @@ async def play_audio(ctx):
 
     moved = False
     filter = {}
-    ffmpeg_error = False
     progresstime = 0
     pureurl = ""
     errors = 0
@@ -839,6 +838,16 @@ async def play_audio(ctx):
                         if tmp.startswith("add"):
                             tmp = tmp.split("add ")[1]
                             filter[ctx.guild.id].append(tmp)
+                        elif tmp.startswith("remove"):
+                            tmp = tmp.split("remove ")[1]
+                            if tmp in filter[ctx.guild.id]:
+                                await ctx.send(f"Removed {tmp} from filter")
+                                filter[ctx.guild.id].remove(tmp)
+                            else:
+                                for fi, f in enumerate(filter[ctx.guild.id]):
+                                    if tmp in f:
+                                        await ctx.send(f"Removed {tmp} from filter")
+                                        filter[ctx.guild.id][fi] = filter[ctx.guild.id][fi].replace(tmp, "").strip(",")
                         elif tmp in ["none", "", "stop"]:
                             filter[ctx.guild.id] = []
                         else:
@@ -1606,11 +1615,16 @@ async def fffilter(ctx, *, filter: str = None):
         await ctx.send("Please provide a filter")
         return
 
+    filter = filter.strip(",")
+
     # validate filter
     # and only allow possible ffmpeg filters
     regex = r"^(?:\w+?=[^,]+,)*?\w+=[^,\n]+$|^\w+$"
-    if not re.match(regex, filter):
-        await ctx.send("Invalid filter")
+    test = filter
+    if "add" in filter or "remove" in filter:
+        test = filter.replace("add ", "").replace("remove ", "")
+    if not re.match(regex, test):
+        await ctx.send(f"Invalid filter '{filter}'")
         return
 
     mydb = sqlite3.connect(db_name)
@@ -1646,8 +1660,15 @@ async def filter(ctx, *, filter: str = None):
             "slow": "asetrate=44100*0.8,aresample=44100",
             "fast": "asetrate=44100*1.25,aresample=44100",
             "bassboost": "bass=g=3",
-            "earrape": "acrusher=.1:1:64:0:log,volume=0.5,volume=0.5",
+            "earrape": "acrusher=.1:1:64:0:log",
+            "earsex": "acrusher=.1:1:64:0:log,volume=0.3",
             "megabass": "bass=g=10",
+    }
+    editable = {
+        "bass": {"max": 10, "min": -10, "map": "bass=g={}"},  # "bass=g=3"
+        "volume": {"max": 5, "min": 0.1, "map": "volume={}"},  # "volume=1.3"
+        "speed": {"max": 3, "min": 0.1, "map": "asetrate=44100*{}", "suffix": ",aresample=44100"},  # "asetrate=44100*0.8,aresample=44100"
+        "bitrate": {"max": 320000, "min": 1000, "map": "aresample={}", "suffix": ",aresample=44100"},
     }
 
     s = ""
@@ -1655,10 +1676,24 @@ async def filter(ctx, *, filter: str = None):
     if filter is None:
         await ctx.send("Please provide a filter")
         return
+    elif filter in ["help", "h"]:
+        tmp = ""
+        for k in editable:
+            tmp += f"{k}: Min: {editable[k]['min']}  -  Max: {editable[k]['max']}\n"
+        await ctx.send("Editable filters (name=value):\n" + tmp + "\n")
+        tmp = ""
+        for k in options:
+            tmp += f"{k}\n"
+        await ctx.send("Simple filters:\n" + tmp)
+        return
 
     if "add" in filter:
         filter = filter.split("add ")[1]
         s = "add "
+    elif "remove" in filter:
+        filter = filter.split("remove ")[1]
+        s = "remove "
+
     if filter in ["none", "clear", "stop"]:
         filter = "none"
         await fffilter(ctx, filter=filter)
@@ -1667,11 +1702,33 @@ async def filter(ctx, *, filter: str = None):
         await fffilter(ctx, filter=filter)
         return
     for f in filter.split(" "):
-        if f not in options.keys():
-            await ctx.send(f"Invalid filter {f}")
+        if f not in options.keys() and f != "" and "=" not in f:
+            await ctx.send(f"Invalid filter '{f}'")
             await ctx.send("Available filters: " + ", ".join(options.keys()))
             return
-        s += options[f] + ","
+        elif "=" in f:
+            key, value = f.split("=")
+            if key not in editable.keys():
+                await ctx.send(f"Invalid filter '{f}'")
+                await ctx.send("Available filters: " + ", ".join(options.keys()))
+                return
+            if "." in value:
+                try:
+                    value = float(value)
+                except ValueError:
+                    await ctx.send(f"Invalid filter '{f}'")
+                    return
+            elif value.replace("-", "").isdigit():
+                value = int(value)
+            else:
+                await ctx.send(f"Invalid filter '{f}'")
+                return
+            if value > editable[key]["max"] or value < editable[key]["min"]:
+                await ctx.send(f"Invalid value for '{key}', must be between {editable[key]['min']} and {editable[key]['max']}")
+                return
+            s += editable[key]["map"].replace("{}", str(value)) + editable[key].get("suffix", "") + ","
+        else:
+            s += options[f] + ","
     s = s[:-1]
     await fffilter(ctx, filter=s)
 
