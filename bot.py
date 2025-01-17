@@ -1077,7 +1077,10 @@ async def play(ctx, *, search: str = None):
 
     await msg.edit(content=f"Added [{name}](<{temp_yturl}>) to queue")
 
-    await ctx.message.add_reaction("👍")
+    try:
+        await ctx.message.add_reaction("👍")
+    except Exception as e:
+        print(f"{colorize(ctx.guild.name, 'red')} - Error adding reaction: {e}")
     mydb.close()
     if vidplist is True:
         if "&list=" in yturl:
