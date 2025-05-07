@@ -8,6 +8,7 @@ import yt_dlp
 import asyncio
 import random
 import sqlite3
+import requests
 import datetime
 from dotenv import load_dotenv
 from youtubesearchpython import SearchVideos
@@ -765,6 +766,13 @@ async def play_audio(ctx):
                 audiostarttime = time.time()
 
             print(f"{colorize(ctx.guild.name, 'green')} - Playing {url}")
+
+            test_request = requests.head(pureurl)
+            location = test_request.headers.get("Location", None)
+            if location is None:
+                print(colorize(ctx.guild.name, "red"), "No location header")
+                await ctx.send(f"```Error playing {url}\nThis is most likely YouTube's fault```")
+
             if moved:
                 # continue playing audio where it left off
                 moved = False
