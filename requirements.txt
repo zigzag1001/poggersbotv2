@@ -8,3 +8,4 @@ discord.py[voice]
 psutil
 schedule
 faker
+requests
