@@ -769,7 +769,7 @@ async def play_audio(ctx):
 
             test_request = requests.head(pureurl)
             location = test_request.headers.get("Location", None)
-            if location is None:
+            if "googlevideo" in pureurl and location is None:
                 print(colorize(ctx.guild.name, "red"), "No location header")
                 await ctx.send(f"```Error playing {url}\nThis is most likely YouTube's fault```")
 
