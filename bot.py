@@ -1169,13 +1169,22 @@ async def clear(ctx):
 
 
 @bot.command(name="skip", help="Skips current song", aliases=["next", "s", "S"])
-async def skip(ctx, num: int = 1):
+# async def skip(ctx, num: int = 1):
+async def skip(ctx, num = None):
     if not is_user_connected(ctx):
         await ctx.send("You are not connected to a voice channel")
         return
     if not is_connected(ctx):
         await ctx.send("I am not connected to a voice channel")
         return
+
+    if num is None:
+        num = 1
+    elif num == "all":
+        num = 1000000  # skip all songs
+    elif num.isdigit():
+        num = int(num)
+
     if num < 1:
         await ctx.send("Number must be greater than 0")
         return
@@ -1189,6 +1198,7 @@ async def skip(ctx, num: int = 1):
         mydb.commit()
         mydb.close()
         await ctx.send(f"Skipped to song +{num}")
+
     if is_looping(ctx):
         mydb = sqlite3.connect(db_name)
         mycursor = mydb.cursor()
