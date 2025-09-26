@@ -68,6 +68,16 @@ Notes:
 - BASE_URL is the url where the bot is hosted, for example http://example.com, can also be an ip like http://192.168.1.1
 - If you are not using 80 or 443 for your port, you need to add the port to BASE_URL, for example http://example.com:7777
 - For other people to access the web interface, you need to port forward the port you set in .env
+- If using a reverse proxy, with subpath, http://example.com/subpath, /subpath will be taken as the base
+
+#### Reverse Proxy example
+Caddy
+```Caddyfile
+handle_path /poggersbotv2* {
+    reverse_proxy poggersweb:<PORT>
+}
+```
+Make sure that docker poggersweb and your reverse proxy can communicate (i.e. same network)
 
 #### Usage
 

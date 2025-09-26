@@ -1,7 +1,7 @@
 version: "3"
 services:
 
-  bot:
+  poggersbot:
     build:
       context: .
       dockerfile: bot.Dockerfile
@@ -9,15 +9,22 @@ services:
     volumes:
       - db:/app/db
 
-  web:
+  poggersweb:
     build:
       context: .
       dockerfile: web.Dockerfile
     ports:
       - ${PORT}:${PORT}
+    networks:
+      - caddy_network
     env_file: .env
     volumes:
       - db:/app/db
+      - ./:/app
 
 volumes:
   db:
+
+networks:
+  caddy_network:
+    external: true

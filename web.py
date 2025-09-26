@@ -15,6 +15,7 @@ app.wsgi_app = ProxyFix(
 )
 
 load_dotenv()
+
 PROXY_URL = os.getenv("PROXY")
 if PROXY_URL:
     proxy_handler = urllib.request.ProxyHandler(
@@ -22,6 +23,16 @@ if PROXY_URL:
     )
     opener = urllib.request.build_opener(proxy_handler)
     urllib.request.install_opener(opener)
+
+BASE_URL = os.getenv("BASE_URL")
+print(BASE_URL)
+base_path = None
+if BASE_URL:
+    base_path = "/" + BASE_URL.strip("/").split("/")[-1]
+    print(base_path)
+
+
+app.config["APPLICATION_ROOT"] = base_path
 
 db_name = "db/bot.db"
 
