@@ -492,8 +492,10 @@ def get_direct_url(url):
     elif "soundcloud.com" in url:
         info = ytdl.extract_info(url, download=False)
         for format in info["formats"]:
-            if format["format_id"] == "http_mp3_128":
+            if format["format_id"] == "http_mp3_1_0":
                 return format["url"]
+        print(colorize("Soundcloud format 128 not found", "red"))
+        print(info["formats"])
     elif url.startswith("search://"):
         search = url.split("search://")[1]
         search = "".join(e for e in search if e.isalnum() or e.isspace())
@@ -515,6 +517,7 @@ def get_direct_url(url):
         return url
     else:
         return get_direct_url("search://" + get_html_title(url))
+    print(colorize("No valid direct url found", "red"))
     return None
 
 
