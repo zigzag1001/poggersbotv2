@@ -7,7 +7,9 @@ services:
       dockerfile: bot.Dockerfile
     env_file: .env
     volumes:
-      - db:/app/db
+      - ./db:/app/db
+      - ./:/app
+    restart: unless-stopped
 
   poggersweb:
     build:
@@ -19,11 +21,9 @@ services:
       - caddy_network
     env_file: .env
     volumes:
-      - db:/app/db
+      - ./db:/app/db
       - ./:/app
-
-volumes:
-  db:
+    restart: unless-stopped
 
 networks:
   caddy_network:

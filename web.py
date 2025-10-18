@@ -2,6 +2,7 @@ from flask import Flask, render_template, jsonify, make_response, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 import os
 import re
+import uuid
 import random
 import urllib
 import sqlite3
@@ -65,10 +66,10 @@ def add_to_playlist(url, guild, addnext):
     isarr = isinstance(url, list)
 
     if isarr:
-        newarr = [(id + i, guild, x) for i, x in enumerate(url)]
+        newarr = [(id + i, guild, x, str(uuid.uuid4())) for i, x in enumerate(url)]
 
         mycursor.executemany(
-            "INSERT INTO playlist (id, guild, url) VALUES (?, ?, ?)", newarr
+            "INSERT INTO playlist (id, guild, url, uuid) VALUES (?, ?, ?, ?)", newarr
         )
 
         mydb.commit()
@@ -92,8 +93,8 @@ def add_to_playlist(url, guild, addnext):
         mydb.commit()
 
     mycursor.execute(
-        "INSERT INTO playlist (id, guild, url) VALUES (?, ?, ?)",
-        (id, guild, url),
+        "INSERT INTO playlist (id, guild, url, uuid) VALUES (?, ?, ?, ?)",
+        (id, guild, url, str(uuid.uuid4())),
     )
     mydb.commit()
     mydb.close()
@@ -289,7 +290,7 @@ def get_data():
     mydb = sqlite3.connect(db_name)
     cursor = mydb.cursor()
     cursor.execute(
-        f"SELECT id, url, guild FROM playlist WHERE guild = {guild} ORDER BY id"
+        f"SELECT id, url, guild, uuid FROM playlist WHERE guild = {guild} ORDER BY id"
     )
     result = cursor.fetchall()
     mydb.close()
@@ -320,6 +321,7 @@ def get_data():
                 "thumbnail": thumbnail,
                 "guild": str(x[2]),
                 "duration": duration,
+                "uuid": x[3],
             }
         )
     response = {
@@ -360,6 +362,7 @@ def delete_song():
     data = request.get_json()
     song_id = data.get("id")
     url = data.get("url")
+    uuid = data.get("uuid")
     guild = int(data.get("guild"))
     mydb = sqlite3.connect(db_name)
     cursor = mydb.cursor()
@@ -370,7 +373,7 @@ def delete_song():
         cursor.execute(
             f"INSERT INTO bot_control (guild, action) VALUES ('{result[0]}', 'skip')"
         )
-    cursor.execute(f"DELETE FROM playlist WHERE id = {song_id} AND url = '{url}'")
+    cursor.execute(f"DELETE FROM playlist WHERE id = {song_id} AND uuid = '{uuid}'")
     mydb.commit()
     mydb.close()
     return jsonify({"success": True})
@@ -469,7 +472,7 @@ def update_list():
         mydb.commit()
     for i in range(len(sorted_ids)):
         cursor.execute(
-            f"UPDATE playlist SET id = {sorted_ids[i]} WHERE url = '{data[i].get('url')}' AND guild = {guild}"
+            f"UPDATE playlist SET id = {sorted_ids[i]} WHERE uuid = '{data[i].get('uuid')}' AND guild = {guild}"
         )
         mydb.commit()
     mydb.close()

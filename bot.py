@@ -3,6 +3,7 @@ import re
 import html
 import time
 import copy
+import uuid
 import urllib
 import yt_dlp
 import asyncio
@@ -75,7 +76,7 @@ mycursor = mydb.cursor()
 # playlist
 mycursor.execute("DROP TABLE IF EXISTS playlist")
 mycursor.execute(
-    "CREATE TABLE IF NOT EXISTS playlist (id INTEGER, guild INTEGER, url TEXT)"
+    "CREATE TABLE IF NOT EXISTS playlist (id INTEGER, guild INTEGER, url TEXT, uuid TEXT)"
 )
 
 # bot control
@@ -186,10 +187,10 @@ def add_to_playlist(ctx, url="", arr=[]):
         id = id[0] + 1
 
     # fills in database with id, guild, url
-    arr = [(id + i, ctx.guild.id, x) for i, x in enumerate(arr)]
+    arr = [(id + i, ctx.guild.id, x, str(uuid.uuid4())) for i, x in enumerate(arr)]
 
     mycursor.executemany(
-        "INSERT INTO playlist (id, guild, url) VALUES (?, ?, ?)",
+        "INSERT INTO playlist (id, guild, url, uuid) VALUES (?, ?, ?, ?)",
         arr,
     )
     mydb.commit()
@@ -489,6 +490,8 @@ def get_direct_url(url):
             for format in info["formats"]:
                 if format["format_id"] == "233":
                     return format["url"]
+        else:
+            print(colorize("YouTube format not found", "yellow"), info)
     elif "soundcloud.com" in url:
         info = ytdl.extract_info(url, download=False)
         for format in info["formats"]:

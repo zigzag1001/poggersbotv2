@@ -93,6 +93,7 @@ function fetchData() {
                 li.dataset.url = song.url;
                 li.dataset.guild = guild;
                 li.dataset.name = song.name;
+                li.dataset.uuid = song.uuid;
                 li.className = "songli";
                 div1.innerText = song.name;
                 div1.className = "songtitle";
@@ -152,6 +153,7 @@ function fetchData() {
                             id: song.id,
                             url: song.url,
                             guild: guild,
+                            uuid: song.uuid,
                         }),
                     });
                     const data = await response.json();
@@ -167,6 +169,7 @@ function fetchData() {
                             id: song.id,
                             url: song.url,
                             guild: guild,
+                            uuid: song.uuid,
                         }),
                     });
                     const data = await response.json();
@@ -181,6 +184,7 @@ function fetchData() {
                         },
                         body: updatedListJSON,
                         guild: guild,
+                        uuid: song.uuid,
                     });
                     const data = await response.json();
                     fetchData();
