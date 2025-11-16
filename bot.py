@@ -50,7 +50,7 @@ ytdlp_format_options = {
 }
 
 ffmpeg_opts = {
-    "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -headers 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0'",
+    "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -headers 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0'",
     "options": "-vn",
 }
 
@@ -493,16 +493,18 @@ def get_direct_url(url):
         else:
             print(colorize("YouTube format not found", "yellow"), info)
     elif "soundcloud.com" in url:
+        soundcloud_format = "http_mp3_1_0"
         info = ytdl.extract_info(url, download=False)
         for format in info["formats"]:
-            if format["format_id"] == "http_mp3_1_0":
-                return format["url"]
-        print(colorize("Soundcloud format 128 not found", "red"))
+            if format["format_id"] == soundcloud_format:
+                extracted_url = format["url"]
+                return extracted_url
+        print(colorize(f"Soundcloud format {soundcloud_format} not found", "red"))
         print(info["formats"])
     elif url.startswith("search://"):
         search = url.split("search://")[1]
         search = "".join(e for e in search if e.isalnum() or e.isspace())
-        search = SearchVideos(search + " lyric", offset=1, mode="json", max_results=1)
+        search = SearchVideos(search, offset=1, mode="json", max_results=1)
         results = search.result()
         evald_results = eval(results)
         ytlink = evald_results["search_result"][0]["link"]
@@ -519,7 +521,9 @@ def get_direct_url(url):
     ):
         return url
     else:
-        return get_direct_url("search://" + get_html_title(url))
+        searchurl = ("search://" + get_html_title(url))
+        print(colorize(f"Fallback to search: {searchurl}", "red"))
+        return get_direct_url(searchurl)
     print(colorize("No valid direct url found", "red"))
     return None
 
@@ -773,11 +777,12 @@ async def play_audio(ctx):
 
             print(f"{colorize(ctx.guild.name, 'green')} - Playing {url}")
 
-            test_request = requests.head(pureurl)
-            location = test_request.headers.get("Location", None)
-            if "googlevideo" in pureurl and location is None:
-                print(colorize(ctx.guild.name, "red"), "No location header")
-                await ctx.send(f"```Error playing {url}\nThis is most likely YouTube's fault```")
+            if "googlevideo" in pureurl:
+                test_request = requests.head(pureurl)
+                location = test_request.headers.get("Location", None)
+                if location is None:
+                    print(colorize(ctx.guild.name, "red"), "No location header")
+                    await ctx.send(f"```Error playing {url}\nThis is most likely YouTube's fault```")
 
             if moved:
                 # continue playing audio where it left off
@@ -1275,9 +1280,9 @@ async def queue(ctx, num: str = "10"):
     duration_minsec = yt_data[playlist[0]][1]
     url = playlist[0]
     if url.startswith("search://"):
-        url = f"https://www.youtube.com/results?search_query={url.split('search://')[1].replace(' ', '+')}+lyric"
+        url = f"https://www.youtube.com/results?search_query={url.split('search://')[1].replace(' ', '+')}"
     elif url.startswith("https://open.spotify.com/track/"):
-        url = f"https://www.youtube.com/results?search_query={title.replace(' ', '+')}+lyric"
+        url = f"https://www.youtube.com/results?search_query={title.replace(' ', '+')}"
     embed.add_field(
         value=f"> {ids[0]}. **[{title}]({url})** -- {duration_minsec}",
         inline=False,
@@ -1289,9 +1294,9 @@ async def queue(ctx, num: str = "10"):
         duration_minsec = yt_data[playlist[x]][1]
         url = playlist[x]
         if url.startswith("search://"):
-            url = f"https://www.youtube.com/results?search_query={url.split('search://')[1].replace(' ', '+')}+lyric"
+            url = f"https://www.youtube.com/results?search_query={url.split('search://')[1].replace(' ', '+')}"
         elif url.startswith("https://open.spotify.com/track/"):
-            url = f"https://www.youtube.com/results?search_query={title.replace(' ', '+')}+lyric"
+            url = f"https://www.youtube.com/results?search_query={title.replace(' ', '+')}"
         embed.add_field(
             value=f"\\> {x+1}. [{title}]({url}) -- {duration_minsec}",
             inline=False,
